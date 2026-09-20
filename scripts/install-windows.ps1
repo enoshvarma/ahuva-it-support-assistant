@@ -122,52 +122,46 @@ if (Test-Path "$InstallDir\.git") {
 }
 
 # -- 4. npm install -----------------------------------------------------------
-Write-Step "4/6" "Installing dependencies (this takes ~1 min first time)..."
+Write-Step "4/6" "Installing dependencies (2-3 min on first run)..."
 Set-Location $InstallDir
 
-$approveList = @("electron", "ssh2", "cpu-features", "@serialport/bindings-cpp")
-foreach ($pkg in $approveList) {
-    $null = & npm pkg set "allowScripts.$pkg=true" 2>$null
-}
-
-$prevEAP = $ErrorActionPreference; $ErrorActionPreference = "SilentlyContinue"
-$npmOut = & npm install --prefer-offline 2>&1
-$ErrorActionPreference = $prevEAP
-$npmOut | Select-Object -Last 4 | ForEach-Object { Write-Info $_ }
-
-if ($LASTEXITCODE -ne 0) {
-    Write-Info "Retrying without offline cache..."
-    $prevEAP = $ErrorActionPreference; $ErrorActionPreference = "SilentlyContinue"
-    & npm install 2>&1 | Select-Object -Last 4 | ForEach-Object { Write-Info $_ }
-    $ErrorActionPreference = $prevEAP
-}
-Write-OK "Dependencies installed"
-
-# -- 4b. Ensure Electron binary is actually downloaded ------------------------
-# The electron npm package has a postinstall step that downloads the real
-# binary from GitHub. This can silently fail on first install (network hiccup,
-# corporate proxy, etc.). Detect and fix it here.
 $electronExe = "$InstallDir\node_modules\electron\dist\electron.exe"
-if (-not (Test-Path $electronExe)) {
-    Write-Info "Electron binary not found -- running electron install script..."
-    $prevEAP = $ErrorActionPreference; $ErrorActionPreference = "SilentlyContinue"
-    & node "$InstallDir\node_modules\electron\install.js" 2>&1 | ForEach-Object { Write-Info $_ }
-    $ErrorActionPreference = $prevEAP
-    if (Test-Path $electronExe) {
-        Write-OK "Electron binary downloaded successfully"
-    } else {
-        Write-Info "Auto-download did not place binary at expected path."
-        Write-Info "Trying: npm install --ignore-scripts=false electron..."
-        $prevEAP = $ErrorActionPreference; $ErrorActionPreference = "SilentlyContinue"
-        & npm install electron --ignore-scripts=false 2>&1 | Select-Object -Last 3 | ForEach-Object { Write-Info $_ }
-        $ErrorActionPreference = $prevEAP
-    }
+
+# If a previous install left node_modules in a broken state (electron binary
+# missing, or a sub-dependency like fs-extra is corrupted), wipe and start fresh.
+$needsClean = $false
+if (Test-Path "$InstallDir\node_modules") {
+    if (-not (Test-Path $electronExe)) { $needsClean = $true }
+    elseif (-not (Test-Path "$InstallDir\node_modules\fs-extra\lib\index.js")) { $needsClean = $true }
 }
+if ($needsClean) {
+    Write-Info "Incomplete previous install detected -- cleaning node_modules..."
+    Remove-Item "$InstallDir\node_modules" -Recurse -Force -ErrorAction SilentlyContinue
+    Remove-Item "$InstallDir\package-lock.json" -Force -ErrorAction SilentlyContinue
+    Write-OK "Cleaned"
+}
+
+Write-Info "Running npm install..."
+$prevEAP = $ErrorActionPreference; $ErrorActionPreference = "SilentlyContinue"
+& npm install 2>&1 | Select-Object -Last 6 | ForEach-Object { Write-Info $_ }
+$npmExit = $LASTEXITCODE
+$ErrorActionPreference = $prevEAP
+
+# If npm install failed OR electron binary still missing, do a full clean retry
+if ($npmExit -ne 0 -or -not (Test-Path $electronExe)) {
+    Write-Info "npm install did not complete cleanly (exit $npmExit) -- retrying with clean slate..."
+    Remove-Item "$InstallDir\node_modules"    -Recurse -Force -ErrorAction SilentlyContinue
+    Remove-Item "$InstallDir\package-lock.json" -Force  -ErrorAction SilentlyContinue
+    $prevEAP = $ErrorActionPreference; $ErrorActionPreference = "SilentlyContinue"
+    & npm install --legacy-peer-deps 2>&1 | Select-Object -Last 6 | ForEach-Object { Write-Info $_ }
+    $ErrorActionPreference = $prevEAP
+}
+
 if (Test-Path $electronExe) {
-    Write-OK "Electron binary ready: $electronExe"
+    Write-OK "Dependencies installed + Electron binary ready"
 } else {
-    Write-Info "WARNING: Electron binary still not found at expected path."
-    Write-Info "The launcher will try node_modules\.bin\electron.cmd as fallback."
+    Write-Info "WARNING: Electron binary not found after install."
+    Write-Info "Check your internet connection -- the installer will try .cmd fallback."
 }
 
 # -- 5. Packet capture (optional -- Npcap) ------------------------------------
