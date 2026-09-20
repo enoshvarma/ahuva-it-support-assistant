@@ -37,17 +37,47 @@ function analyseCapture({ packets, conversations, summary }) {
   };
 
   for (const line of lines) {
-    const [, src, dst, proto, info] = line.split("\t");
+    // Fields: frameNum, src, dst, proto, info, tcpRexmit, tcpOOO, tcpDupAck, tcpRst, icmpType, dnsRcode
+    const parts = line.split("\t");
+    const [, src, dst, proto, info, tcpRexmit, tcpOOO, tcpDupAck, tcpRst, icmpType, dnsRcode] = parts;
+
     if (proto) counts.protocols[proto] = (counts.protocols[proto] || 0) + 1;
     if (src)   counts.sources[src]     = (counts.sources[src]     || 0) + 1;
     if (dst)   counts.dests[dst]       = (counts.dests[dst]       || 0) + 1;
 
+    // Prefer dedicated tshark fields (accurate) — fall back to Info regex for older tshark
+    if (tcpRexmit === "1" || tcpOOO === "1" || tcpDupAck === "1") {
+      counts.retransmits++;
+    } else {
+      const i = String(info || "");
+      if (RETRANSMIT_RE.test(i)) counts.retransmits++;
+    }
+
+    if (tcpRst === "1") {
+      counts.resets++;
+    } else {
+      const i = String(info || "");
+      if (RST_RE.test(i)) counts.resets++;
+    }
+
+    // icmpType 3 = destination unreachable
+    if (icmpType === "3") {
+      counts.icmpUnreach++;
+    } else {
+      const i = String(info || "");
+      if (ICMP_UNREACH.test(i)) counts.icmpUnreach++;
+    }
+
+    // dnsRcode non-zero = DNS error (3 = NXDOMAIN)
+    if (dnsRcode && dnsRcode !== "0" && dnsRcode !== "") {
+      counts.dnsFailures++;
+    } else {
+      const i = String(info || "");
+      if (DNS_FAIL_RE.test(i)) counts.dnsFailures++;
+    }
+
     const i = String(info || "");
-    if (RETRANSMIT_RE.test(i)) counts.retransmits++;
-    if (RST_RE.test(i))        counts.resets++;
-    if (ARP_RE.test(i))        counts.arpCount++;
-    if (DNS_FAIL_RE.test(i))   counts.dnsFailures++;
-    if (ICMP_UNREACH.test(i))  counts.icmpUnreach++;
+    if (ARP_RE.test(i)) counts.arpCount++;
   }
 
   const total = counts.total || 1; // avoid divide-by-zero

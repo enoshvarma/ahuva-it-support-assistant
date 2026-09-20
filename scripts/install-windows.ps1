@@ -1,19 +1,21 @@
-# Ahuva IT Support Assistant -- Windows Installer v1.7.0
+# Ahuva IT Support Assistant -- Windows Installer v1.8.0
 # -------------------------------------------------------------------------
-# ONE-LINER (run from any PowerShell window -- no admin needed):
+# ONE-LINER (paste into any PowerShell or CMD window -- no admin needed):
 #
-#   $f="$env:TEMP\ahuva-install.ps1"; iwr "https://raw.githubusercontent.com/enoshvarma/ahuva-it-support-assistant/main/scripts/install-windows.ps1" -OutFile $f -UseBasicParsing; powershell -ExecutionPolicy Bypass -File $f
+#   PowerShell:
+#     irm https://raw.githubusercontent.com/enoshvarma/ahuva-it-support-assistant/main/scripts/install-windows.ps1 | iex
 #
-# NOTE: Use the -File form above, not "| iex" -- iex re-parses the whole
-#       script as one string and is more fragile than -File execution.
+#   CMD (command prompt):
+#     powershell -ExecutionPolicy Bypass -Command "irm 'https://raw.githubusercontent.com/enoshvarma/ahuva-it-support-assistant/main/scripts/install-windows.ps1' | iex"
 #
 # What this script does:
 #   1. Installs Git (via winget) if missing
 #   2. Installs Node.js LTS (via winget) if missing or < v20
 #   3. Clones / updates the repo to %LOCALAPPDATA%\AhuvaITAssistant
 #   4. Runs npm install
-#   5. Creates a Desktop shortcut + Start Menu entry
-#   6. Optionally launches the app
+#   5. Registers app in Control Panel (Add/Remove Programs)
+#   6. Creates Desktop shortcut + Start Menu entry
+#   7. Launches the app
 # -------------------------------------------------------------------------
 
 $ErrorActionPreference = "Stop"
@@ -21,7 +23,7 @@ $ErrorActionPreference = "Stop"
 $AppName    = "Ahuva IT Support Assistant"
 $RepoUrl    = "https://github.com/enoshvarma/ahuva-it-support-assistant.git"
 $InstallDir = "$env:LOCALAPPDATA\AhuvaITAssistant"
-$Version    = "1.7.0"
+$Version    = "1.8.0"
 
 # -- colour helpers -----------------------------------------------------------
 function Write-Step   { param($n,$t) Write-Host "  [$n] $t" -ForegroundColor Yellow }
@@ -31,8 +33,8 @@ function Write-Fail   { param($t)    Write-Host "      !!  $t" -ForegroundColor 
 function Write-Banner {
     Write-Host ""
     Write-Host "  +==================================================+" -ForegroundColor Cyan
-    Write-Host "  |   Ahuva IT Support Assistant  |  Installer        |" -ForegroundColor Cyan
-    Write-Host "  |   v$Version  |  Windows                               |" -ForegroundColor Cyan
+    Write-Host "  |   Ahuva IT Support Assistant  |  Installer v1.8  |" -ForegroundColor Cyan
+    Write-Host "  |   Windows  |  7 steps  |  no admin needed         |" -ForegroundColor Cyan
     Write-Host "  +==================================================+" -ForegroundColor Cyan
     Write-Host ""
 }
@@ -165,7 +167,7 @@ if (Test-Path $electronExe) {
 }
 
 # -- 5. Packet capture (optional -- Npcap) ------------------------------------
-Write-Step "5/6" "Checking packet capture support..."
+Write-Step "5/7" "Checking packet capture support..."
 $tshark = Get-Command tshark -ErrorAction SilentlyContinue
 if ($tshark) {
     Write-OK "tshark found at $($tshark.Source)"
@@ -188,15 +190,12 @@ if ($tshark) {
     }
 }
 
-# -- 6. Shortcuts -------------------------------------------------------------
-Write-Step "6/6" "Creating shortcuts..."
+# -- 6. Shortcuts + Control Panel ---------------------------------------------
+Write-Step "6/7" "Creating shortcuts..."
 
-# Batch file tries three launch methods in order so it always works:
-#   1. node_modules\electron\dist\electron.exe  (direct binary, most reliable)
-#   2. node_modules\.bin\electron.cmd           (npm bin stub)
-#   3. npx electron .                           (last resort, downloads if needed)
+# Batch launcher — tries three paths in order so it always works
 $batPath = "$InstallDir\launch.bat"
-$batContent = @"
+Set-Content -Path $batPath -Encoding ASCII -Value @"
 @echo off
 cd /d "$InstallDir"
 if exist "node_modules\electron\dist\electron.exe" (
@@ -207,16 +206,14 @@ if exist "node_modules\.bin\electron.cmd" (
     "node_modules\.bin\electron.cmd" . --disable-gpu-sandbox --no-sandbox
     goto :done
 )
-echo Electron not found in node_modules -- running npm install...
+echo Electron not found -- running npm install...
 call npm install
 "node_modules\.bin\electron.cmd" . --disable-gpu-sandbox --no-sandbox
 :done
 if errorlevel 1 pause
 "@
-Set-Content -Path $batPath -Value $batContent -Encoding ASCII
 
-# VBS wrapper: opens the bat invisibly.
-# But if electron fails, the bat will pause (console stays open) so user can read the error.
+# VBS wrapper: runs the bat with no visible console window.
 $vbsPath = "$InstallDir\launch.vbs"
 Set-Content -Path $vbsPath -Encoding ASCII -Value @"
 Set ws = CreateObject("WScript.Shell")
@@ -225,12 +222,15 @@ ws.Run Chr(34) & "$batPath" & Chr(34), 7, False
 
 $wsh = New-Object -ComObject WScript.Shell
 
-$desk = $wsh.CreateShortcut("$env:USERPROFILE\Desktop\$AppName.lnk")
+# Use the shell-known folder so OneDrive-redirected desktops work correctly
+$desktopPath = $wsh.SpecialFolders("Desktop")
+$desk = $wsh.CreateShortcut("$desktopPath\$AppName.lnk")
 $desk.TargetPath       = $vbsPath
 $desk.WorkingDirectory = $InstallDir
 $desk.Description      = "$AppName v$Version"
 if (Test-Path "$InstallDir\assets\icon.ico") { $desk.IconLocation = "$InstallDir\assets\icon.ico" }
 $desk.Save()
+Write-OK "Desktop shortcut -> $desktopPath\$AppName.lnk"
 
 $smDir = "$env:APPDATA\Microsoft\Windows\Start Menu\Programs"
 $sm = $wsh.CreateShortcut("$smDir\$AppName.lnk")
@@ -239,27 +239,42 @@ $sm.WorkingDirectory = $InstallDir
 $sm.Description      = "$AppName v$Version"
 if (Test-Path "$InstallDir\assets\icon.ico") { $sm.IconLocation = "$InstallDir\assets\icon.ico" }
 $sm.Save()
+Write-OK "Start Menu shortcut created"
 
-Write-OK "Desktop + Start Menu shortcuts created"
+# -- 7. Control Panel (Add/Remove Programs) -----------------------------------
+Write-Step "7/7" "Registering in Control Panel..."
+$uninstallKey = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\AhuvaITAssistant"
+$uninstallCmd = "powershell -ExecutionPolicy Bypass -Command `"Remove-Item '$InstallDir' -Recurse -Force; Remove-Item '$desktopPath\$AppName.lnk' -Force -ErrorAction SilentlyContinue; Remove-Item '$smDir\$AppName.lnk' -Force -ErrorAction SilentlyContinue; Remove-Item 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\AhuvaITAssistant' -Recurse -Force -ErrorAction SilentlyContinue`""
+try {
+    if (-not (Test-Path $uninstallKey)) { $null = New-Item -Path $uninstallKey -Force }
+    Set-ItemProperty -Path $uninstallKey -Name "DisplayName"      -Value $AppName
+    Set-ItemProperty -Path $uninstallKey -Name "DisplayVersion"   -Value $Version
+    Set-ItemProperty -Path $uninstallKey -Name "Publisher"        -Value "Ahuva IT"
+    Set-ItemProperty -Path $uninstallKey -Name "InstallLocation"  -Value $InstallDir
+    Set-ItemProperty -Path $uninstallKey -Name "UninstallString"  -Value $uninstallCmd
+    Set-ItemProperty -Path $uninstallKey -Name "NoModify"         -Value 1 -Type DWord
+    Set-ItemProperty -Path $uninstallKey -Name "NoRepair"         -Value 1 -Type DWord
+    if (Test-Path "$InstallDir\assets\icon.ico") {
+        Set-ItemProperty -Path $uninstallKey -Name "DisplayIcon" -Value "$InstallDir\assets\icon.ico"
+    }
+    Write-OK "Registered in Control Panel -> Add/Remove Programs"
+} catch {
+    Write-Info "Could not write registry entry (non-fatal): $_"
+}
 
 # -- Done ---------------------------------------------------------------------
 Write-Host ""
 Write-Host "  +==================================================+" -ForegroundColor Green
-Write-Host "  |   Installation complete!  v$Version installed.        |" -ForegroundColor Green
+Write-Host "  |   Installation complete!  v$Version                   |" -ForegroundColor Green
 Write-Host "  +==================================================+" -ForegroundColor Green
 Write-Host ""
 Write-Host "  Launch options:" -ForegroundColor White
-Write-Host "    * Double-click  '$AppName'  on Desktop" -ForegroundColor Cyan
-Write-Host "    * Start Menu -> $AppName" -ForegroundColor Cyan
-Write-Host "    * Run manually:" -ForegroundColor Cyan
-Write-Host "        cd `"$InstallDir`"  &&  npm start" -ForegroundColor Cyan
-Write-Host ""
-Write-Host "  To update later, re-run this script -- it will git pull + reinstall." -ForegroundColor Gray
+Write-Host "    * Desktop shortcut: '$AppName'" -ForegroundColor Cyan
+Write-Host "    * Start -> $AppName" -ForegroundColor Cyan
+Write-Host "    * Uninstall: Control Panel -> Add/Remove Programs -> $AppName" -ForegroundColor Cyan
+Write-Host "    * Update:    re-run this one-liner at any time" -ForegroundColor Cyan
 Write-Host ""
 
-$launch = Read-Host "  Launch now? [Y/n]"
-if ($launch -ne "n" -and $launch -ne "N") {
-    Start-Process "wscript.exe" "`"$vbsPath`""
-    Write-Host "  Launching..." -ForegroundColor Green
-}
+Write-Host "  Launching app..." -ForegroundColor Green
+Start-Process "wscript.exe" "`"$vbsPath`""
 Write-Host ""

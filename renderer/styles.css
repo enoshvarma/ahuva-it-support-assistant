@@ -168,6 +168,7 @@ select { cursor: pointer; appearance: none;
   background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px;
   background-color: rgba(0,0,0,.2);
 }
+select option { background-color: #0d1929; color: #dde8f0; }
 textarea { resize: vertical; line-height: 1.5; }
 .row { display: flex; gap: 6px; }
 .row select { flex: 1; }

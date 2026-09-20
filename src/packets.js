@@ -196,19 +196,28 @@ function capture({ iface, seconds = 15, maxPackets = 400, filter = "", outDir })
         return reject(new Error("Capture produced no file. " + errBuf.slice(0, 200)));
       }
       log.info("Capture complete, decoding", { pcap });
-      // Decode conversation stats + frame list for AI analysis
-      execFile(bin, ["-r", pcap, "-q", "-z", "conv,ip"], { timeout: 30000, maxBuffer: 4e6 }, (e1, convOut) => {
+      // Decode conversation stats + frame list for analysis
+      execFile(bin, ["-r", pcap, "-q", "-z", "conv,ip"], { timeout: 30000, maxBuffer: 8e6 }, (e1, convOut) => {
         execFile(bin, [
-          "-r", pcap, "-T", "fields",
-          "-e", "frame.number", "-e", "ip.src", "-e", "ip.dst",
-          "-e", "_ws.col.Protocol", "-e", "_ws.col.Info"
-        ], { timeout: 30000, maxBuffer: 4e6 }, (e2, listOut) => {
-          const lines = String(listOut || "").split("\n").filter(Boolean).slice(0, 250);
+          "-r", pcap, "-T", "fields", "-E", "separator=\t",
+          "-e", "frame.number",
+          "-e", "ip.src",
+          "-e", "ip.dst",
+          "-e", "_ws.col.Protocol",
+          "-e", "_ws.col.Info",
+          "-e", "tcp.analysis.retransmission",
+          "-e", "tcp.analysis.out_of_order",
+          "-e", "tcp.analysis.duplicate_ack",
+          "-e", "tcp.flags.reset",
+          "-e", "icmp.type",
+          "-e", "dns.flags.rcode"
+        ], { timeout: 30000, maxBuffer: 8e6 }, (e2, listOut) => {
+          const lines = String(listOut || "").split("\n").filter(Boolean).slice(0, 500);
           resolve({
             pcap,
             packets: lines.length,
-            conversations: String(convOut || "").slice(0, 4000),
-            summary: lines.join("\n").slice(0, 12000)
+            conversations: String(convOut || "").slice(0, 8000),
+            summary: lines.join("\n").slice(0, 24000)
           });
         });
       });
