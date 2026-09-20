@@ -816,49 +816,16 @@ function switchPane(which) {
   });
 }
 
-/* ================= Theme engine ================= */
-(function initTheme() {
-  const saved = localStorage.getItem("ahuva-theme") || "dark";
-  applyTheme(saved);
-  $("theme-dark").onclick  = () => applyTheme("dark");
-  $("theme-light").onclick = () => applyTheme("light");
-  $("theme-kali").onclick  = () => applyTheme("kali");
-})();
-
-function applyTheme(name) {
-  document.documentElement.setAttribute("data-theme", name === "dark" ? "" : name);
-  ["dark","light","kali"].forEach(t => {
-    const btn = $("theme-" + t);
-    if (btn) btn.classList.toggle("active", t === name);
-  });
-  localStorage.setItem("ahuva-theme", name);
-  // Sync xterm.js terminal palette to the active theme
-  if (name === "kali") {
-    // Catppuccin Mocha — Kali Linux 2024 default palette
-    term.options.theme = {
-      background: "#1e1e2e", foreground: "#cdd6f4", cursor: "#f5e0dc",
-      cursorAccent: "#1e1e2e", selectionBackground: "rgba(88,91,112,.5)",
-      black: "#45475a",   red: "#f38ba8",   green: "#a6e3a1",  yellow: "#f9e2af",
-      blue: "#89b4fa",    magenta: "#f5c2e7", cyan: "#94e2d5",  white: "#bac2de",
-      brightBlack: "#585b70", brightRed: "#f38ba8", brightGreen: "#a6e3a1",
-      brightYellow: "#f9e2af", brightBlue: "#89b4fa", brightMagenta: "#f5c2e7",
-      brightCyan: "#94e2d5", brightWhite: "#a6adc8"
-    };
-  } else if (name === "light") {
-    term.options.theme = { background: "#1e1e1e", foreground: "#d4d4d4", cursor: "#0077a8",
-      selectionBackground: "rgba(0,119,168,.25)" };
-  } else {
-    term.options.theme = {
-      background: "#04090f", foreground: "#d8e8f0", cursor: "#00bceb",
-      cursorAccent: "#07111f", selectionBackground: "rgba(0,188,235,.25)",
-      black: "#0d1929", red: "#f54141", green: "#26d98d", yellow: "#f0b843",
-      blue: "#00bceb", magenta: "#9b7bf7", cyan: "#26c4d4", white: "#d8e8f0",
-      brightBlack: "#253e55", brightRed: "#ff6b6b", brightGreen: "#3dffa0",
-      brightYellow: "#ffd060", brightBlue: "#40d4ff", brightMagenta: "#b39dff",
-      brightCyan: "#4ae0ee", brightWhite: "#e8f4fc"
-    };
-  }
-}
+/* ================= Theme (EV dark — permanent) ================= */
+term.options.theme = {
+  background: "#04090f", foreground: "#d8e8f0", cursor: "#00bceb",
+  cursorAccent: "#07111f", selectionBackground: "rgba(0,188,235,.25)",
+  black: "#0d1929", red: "#f54141", green: "#26d98d", yellow: "#f0b843",
+  blue: "#00bceb", magenta: "#9b7bf7", cyan: "#26c4d4", white: "#d8e8f0",
+  brightBlack: "#253e55", brightRed: "#ff6b6b", brightGreen: "#3dffa0",
+  brightYellow: "#ffd060", brightBlue: "#40d4ff", brightMagenta: "#b39dff",
+  brightCyan: "#4ae0ee", brightWhite: "#e8f4fc"
+};
 
 /* ================= Network Scanner ================= */
 let scannerReady = false;
