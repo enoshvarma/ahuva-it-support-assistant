@@ -111,17 +111,48 @@ function tsharkAvailable() {
   });
 }
 
+function listInterfacesViaOS() {
+  const ifaces = os.networkInterfaces();
+  const FRIENDLY = {
+    "Wi-Fi": "Wi-Fi", "WLAN": "Wi-Fi", "wlan": "Wi-Fi",
+    "eth": "Ethernet", "en0": "Ethernet / Wi-Fi", "en1": "Ethernet / Wi-Fi",
+    "Ethernet": "Ethernet", "Local Area Connection": "Ethernet"
+  };
+  return Object.entries(ifaces)
+    .filter(([, addrs]) => addrs && addrs.length > 0 && !addrs.every(a => a.internal))
+    .map(([name, addrs], idx) => {
+      const ipv4 = addrs.find(a => a.family === "IPv4" && !a.internal);
+      const ip   = ipv4 ? ipv4.address : "";
+      const friendly = Object.keys(FRIENDLY).find(k => name.toLowerCase().includes(k.toLowerCase()));
+      const label = friendly ? `${FRIENDLY[friendly]} — ${name}${ip ? " (" + ip + ")" : ""}` : `${name}${ip ? " (" + ip + ")" : ""}`;
+      return { index: String(idx + 1), id: name, name: label };
+    });
+}
+
 function listInterfaces() {
   return new Promise(resolve => {
     const bin = findTshark();
-    if (!bin) return resolve([]);
+    if (!bin) return resolve(listInterfacesViaOS());
     execFile(bin, ["-D"], { timeout: 10000 }, (err, stdout) => {
-      if (err) { log.warn("tshark -D failed", { message: err.message }); return resolve([]); }
-      const list = String(stdout || "").split("\n").filter(Boolean).map(line => {
+      if (err) {
+        log.warn("tshark -D failed, falling back to OS interfaces", { message: err.message });
+        return resolve(listInterfacesViaOS());
+      }
+      const tsharkList = String(stdout || "").split("\n").filter(Boolean).map(line => {
         const m = line.match(/^(\d+)\.\s+(.+?)(?:\s+\((.+)\))?$/);
-        return m ? { index: m[1], id: m[2].trim(), name: (m[3] || m[2]).trim() } : null;
+        if (!m) return null;
+        const id = m[2].trim();
+        const label = (m[3] || m[2]).trim();
+        // Humanise known Windows interface patterns
+        const human = label
+          .replace(/\\Device\\NPF_\{[^}]+\}/, "")
+          .replace(/^\s*|\s*$/g, "");
+        return { index: m[1], id, name: human || label };
       }).filter(Boolean);
-      resolve(list);
+
+      // If tshark returned interfaces, prefer them; otherwise fall back to OS
+      if (tsharkList.length > 0) return resolve(tsharkList);
+      resolve(listInterfacesViaOS());
     });
   });
 }
