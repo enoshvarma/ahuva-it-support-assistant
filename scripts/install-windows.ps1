@@ -173,8 +173,9 @@ Write-Step "6/6" "Creating shortcuts..."
 # Find the electron binary directly so the launcher does NOT need npm in PATH
 $electronExe = "$InstallDir\node_modules\electron\dist\electron.exe"
 if (-not (Test-Path $electronExe)) {
-    # Fallback: locate via node_modules/.bin
-    $electronExe = (Get-Command "$InstallDir\node_modules\.bin\electron.cmd" -ErrorAction SilentlyContinue)?.Source
+    # Fallback: locate via node_modules/.bin (PS 5.1-compatible — no ?. operator)
+    $_cmd = Get-Command "$InstallDir\node_modules\.bin\electron.cmd" -ErrorAction SilentlyContinue
+    if ($_cmd) { $electronExe = $_cmd.Source }
 }
 
 # Launcher batch — runs electron directly, visible window so errors are readable.
