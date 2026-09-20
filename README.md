@@ -107,11 +107,13 @@ Pick your OS below — one command installs everything (Node.js, Git, the app, a
 
 ### 🪟 Windows
 
-Open **PowerShell** (no admin needed) and run:
+Open **PowerShell** (no admin needed) and run this single command:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -Command "iwr -useb 'https://raw.githubusercontent.com/enoshvarma/ahuva-it-support-assistant/main/scripts/install-windows.ps1' | iex"
+$f="$env:TEMP\ahuva-install.ps1"; iwr "https://raw.githubusercontent.com/enoshvarma/ahuva-it-support-assistant/main/scripts/install-windows.ps1" -OutFile $f -UseBasicParsing; powershell -ExecutionPolicy Bypass -File $f
 ```
+
+> **Why not `| iex`?** `iex` (Invoke-Expression) re-parses the entire script as one string in PowerShell 5.1, which can produce spurious errors. Saving to a file first and running with `-File` is the reliable approach.
 
 **What it does:**
 - Installs **Git** via winget if missing

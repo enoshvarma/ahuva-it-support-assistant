@@ -2,10 +2,10 @@
 # -------------------------------------------------------------------------
 # ONE-LINER (run from any PowerShell window -- no admin needed):
 #
-#   powershell -ExecutionPolicy Bypass -File scripts\install-windows.ps1
+#   $f="$env:TEMP\ahuva-install.ps1"; iwr "https://raw.githubusercontent.com/enoshvarma/ahuva-it-support-assistant/main/scripts/install-windows.ps1" -OutFile $f -UseBasicParsing; powershell -ExecutionPolicy Bypass -File $f
 #
-# Or download + run directly:
-#   iwr -useb "https://raw.githubusercontent.com/enoshvarma/ahuva-it-support-assistant/main/scripts/install-windows.ps1" | iex
+# NOTE: Use the -File form above, not "| iex" -- iex re-parses the whole
+#       script as one string and is more fragile than -File execution.
 #
 # What this script does:
 #   1. Installs Git (via winget) if missing
