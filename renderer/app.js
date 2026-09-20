@@ -808,11 +808,160 @@ $("guide-close").onclick = () => $("drawer-guide").classList.add("hidden");
 $("tab-copilot").onclick = () => switchPane("copilot");
 $("tab-packets").onclick = () => { switchPane("packets"); initPackets(); };
 $("tab-swcfg").onclick   = () => { switchPane("swcfg");   initSwcfg();   };
+$("tab-scanner").onclick = () => { switchPane("scanner");  initScanner();  };
 function switchPane(which) {
-  ["copilot", "packets", "swcfg"].forEach(p => {
-    $("tab-" + p).classList.toggle("active", p === which);
+  ["copilot", "packets", "swcfg", "scanner"].forEach(p => {
+    $("tab-"  + p).classList.toggle("active", p === which);
     $("pane-" + p).classList.toggle("hidden", p !== which);
   });
+}
+
+/* ================= Theme engine ================= */
+(function initTheme() {
+  const saved = localStorage.getItem("ahuva-theme") || "dark";
+  applyTheme(saved);
+  $("theme-dark").onclick   = () => applyTheme("dark");
+  $("theme-light").onclick  = () => applyTheme("light");
+  $("theme-hacker").onclick = () => applyTheme("hacker");
+})();
+
+function applyTheme(name) {
+  document.documentElement.setAttribute("data-theme", name === "dark" ? "" : name);
+  ["dark","light","hacker"].forEach(t => {
+    const btn = $("theme-" + t);
+    if (btn) btn.classList.toggle("active", t === name);
+  });
+  localStorage.setItem("ahuva-theme", name);
+  // Update xterm theme for hacker/light modes
+  if (name === "hacker") {
+    term.options.theme = { background: "#000000", foreground: "#00ff66", cursor: "#00ff66",
+      selectionBackground: "rgba(0,255,102,.25)",
+      black: "#0a0a0a", red: "#ff2244", green: "#00ff66", yellow: "#ffcc00",
+      blue: "#00ccff", magenta: "#cc00ff", cyan: "#00cccc", white: "#00ff66",
+      brightBlack: "#1a3a1a", brightRed: "#ff4466", brightGreen: "#33ff88",
+      brightYellow: "#ffdd33", brightBlue: "#33ddff", brightMagenta: "#dd33ff",
+      brightCyan: "#33dddd", brightWhite: "#00ff88" };
+  } else if (name === "light") {
+    term.options.theme = { background: "#1e1e1e", foreground: "#d4d4d4", cursor: "#0077a8",
+      selectionBackground: "rgba(0,119,168,.25)" };
+  } else {
+    term.options.theme = {
+      background: "#04090f", foreground: "#d8e8f0", cursor: "#00bceb",
+      cursorAccent: "#07111f", selectionBackground: "rgba(0,188,235,.25)",
+      black: "#0d1929", red: "#f54141", green: "#26d98d", yellow: "#f0b843",
+      blue: "#00bceb", magenta: "#9b7bf7", cyan: "#26c4d4", white: "#d8e8f0",
+      brightBlack: "#253e55", brightRed: "#ff6b6b", brightGreen: "#3dffa0",
+      brightYellow: "#ffd060", brightBlue: "#40d4ff", brightMagenta: "#b39dff",
+      brightCyan: "#4ae0ee", brightWhite: "#e8f4fc"
+    };
+  }
+}
+
+/* ================= Network Scanner ================= */
+let scannerReady = false;
+let scanAbortFlag = false;
+
+function initScanner() {
+  if (scannerReady) return;
+  scannerReady = true;
+
+  // Register progress listener
+  window.ahuva.onScanProgress(({ result, done, total }) => {
+    updateScanProgress(done, total);
+    if (result.status !== "offline") appendScanHost(result);
+  });
+
+  $("scan-start").onclick = startScan;
+  $("scan-stop").onclick  = () => { scanAbortFlag = true; };
+  $("scan-wol-send").onclick = async () => {
+    const mac = $("scan-wol-mac").value.trim();
+    if (!mac) return;
+    try { await window.ahuva.scannerWoL(mac, "255.255.255.255"); sysMsg("WoL packet sent to " + mac); }
+    catch (e) { sysMsg("WoL error: " + e.message, true); }
+  };
+}
+
+async function startScan() {
+  const target = $("scan-target").value.trim();
+  if (!target) return;
+  scanAbortFlag = false;
+  $("scan-results").innerHTML  = "";
+  $("scan-summary").classList.add("hidden");
+  $("scan-wol-row").classList.add("hidden");
+  $("scan-start").classList.add("hidden");
+  $("scan-stop").classList.remove("hidden");
+  $("scan-progress-wrap").classList.remove("hidden");
+  updateScanProgress(0, 1);
+
+  try {
+    const opts = {
+      fullScan:     $("scan-full").checked,
+      useNmap:      $("scan-nmap").checked,
+      portFallback: $("scan-port-fallback").checked,
+      concurrency:  50,
+    };
+    const results = await window.ahuva.scannerStart(target, opts);
+    renderScanSummary(results);
+  } catch (e) {
+    sysMsg("Scan error: " + e.message, true);
+  } finally {
+    $("scan-start").classList.remove("hidden");
+    $("scan-stop").classList.add("hidden");
+    $("scan-progress-wrap").classList.add("hidden");
+  }
+}
+
+function updateScanProgress(done, total) {
+  const pct = total > 0 ? Math.round(done / total * 100) : 0;
+  $("scan-progress-fill").style.width = pct + "%";
+  $("scan-progress-text").textContent = `${done} / ${total}`;
+}
+
+function appendScanHost(r) {
+  const el = document.createElement("div");
+  el.className = "scan-host " + (r.status || "offline");
+  el.dataset.ip = r.ip;
+
+  const portChips = (r.openPorts || []).slice(0, 10).map(p =>
+    `<span class="scan-port-chip">${p.port}/${p.service}</span>`).join("");
+
+  el.innerHTML = `
+    <div class="scan-host-row1">
+      <span class="scan-ip">${r.ip}</span>
+      <span class="scan-hostname">${r.hostname || ""}</span>
+      <span class="scan-vendor">${r.vendor || ""}</span>
+    </div>
+    ${r.mac ? `<div class="muted" style="font-size:10.5px;margin-top:2px;font-family:var(--mono)">${r.mac}</div>` : ""}
+    ${portChips ? `<div class="scan-ports">${portChips}</div>` : ""}
+    <div class="scan-host-actions">
+      <button class="ghost small" onclick="scanSSH('${r.ip}')">SSH</button>
+      <button class="ghost small" onclick="scanTelnet('${r.ip}')">Telnet</button>
+      ${r.mac ? `<button class="ghost small" onclick="scanWoL('${r.mac}')">WoL</button>` : ""}
+      <button class="ghost small" onclick="scanTrace('${r.ip}')">Trace</button>
+    </div>`;
+
+  $("scan-results").appendChild(el);
+}
+
+function renderScanSummary(results) {
+  const online   = results.filter(r => r.status === "online").length;
+  const withPorts = results.filter(r => r.openPorts && r.openPorts.length).length;
+  $("scan-summary").innerHTML =
+    `<div class="scan-stat"><span>Total</span><span class="scan-stat-val">${results.length}</span></div>` +
+    `<div class="scan-stat"><span>Online</span><span class="scan-stat-val" style="color:var(--ok)">${online}</span></div>` +
+    `<div class="scan-stat"><span>Offline</span><span class="scan-stat-val" style="color:var(--muted)">${results.length - online}</span></div>` +
+    `<div class="scan-stat"><span>Open ports</span><span class="scan-stat-val">${withPorts}</span></div>`;
+  $("scan-summary").classList.remove("hidden");
+  $("scan-wol-row").classList.remove("hidden");
+}
+
+function scanSSH(ip)    { $("f-host").value = ip; $("seg-ssh").click(); }
+function scanTelnet(ip) { $("f-host").value = ip; $("seg-telnet").click(); }
+function scanWoL(mac)   { $("scan-wol-mac").value = mac; }
+async function scanTrace(ip) {
+  sysMsg("Traceroute to " + ip + "…");
+  const r = await window.ahuva.scannerTraceroute(ip);
+  sysMsg(r.output || "No output");
 }
 
 /* ================= Packet analysis ================= */
@@ -998,25 +1147,48 @@ setInterval(updateStatusBar, 1000);
 
 /* ================= Model presets in settings ================= */
 async function loadModelPresets(provider, keepCurrent) {
-  const info = await window.ahuva.modelPresets(provider);
+  const freeOnly = $("s-free-only") ? $("s-free-only").checked : false;
+  const info = await window.ahuva.modelPresets({ provider, freeOnly });
+  const presets = info.presets || [];
+
   const dl = $("model-presets");
   if (dl) {
     dl.innerHTML = "";
-    for (const m of info.presets) {
+    for (const m of presets) {
       const o = document.createElement("option");
-      o.value = m.id; o.label = `${m.label} · ${m.cost} · ${m.speed}`;
+      o.value = m.id;
+      o.label = `${m.label}${m.free ? " [FREE]" : ""} · ${m.cost} · ${m.speed}`;
       dl.appendChild(o);
     }
   }
+
   const hint = $("model-hint");
   if (hint) {
-    hint.innerHTML = info.presets.map(m =>
-      `<div class="pkt-row"><span class="muted">${m.label}</span><span class="pill">${m.cost}</span></div>`).join("");
+    hint.innerHTML = presets.slice(0, 12).map(m =>
+      `<div class="model-hint-row">` +
+        `<span class="model-hint-label">${m.label}</span>` +
+        `<span class="model-hint-speed muted">${m.speed}</span>` +
+        `<span class="model-hint-cost pill${m.free ? " free" : ""}">${m.free ? "FREE" : m.cost}</span>` +
+      `</div>`
+    ).join("");
   }
+
+  // Update base-url hint
+  const baseHint = $("s-base-hint");
+  if (baseHint && info.baseUrl) {
+    baseHint.textContent = `Default: ${info.baseUrl}`;
+    baseHint.classList.remove("hidden");
+  }
+
   if (!keepCurrent) {
     if (info.model) $("s-model").value = info.model;
-    if (info.baseUrl) $("s-base").value = info.baseUrl;
+    if (info.baseUrl && !$("s-base").value) $("s-base").value = info.baseUrl;
   }
+}
+
+// Re-load presets when free-only toggle changes
+if ($("s-free-only")) {
+  $("s-free-only").onchange = () => loadModelPresets($("s-provider").value, true);
 }
 
 /* ---------------- init ---------------- */

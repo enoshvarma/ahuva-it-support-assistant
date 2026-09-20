@@ -1,7 +1,7 @@
 {
   "name": "ahuva-it-support-assistant",
   "productName": "Ahuva IT Support Assistant",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "description": "AI-guided network configuration copilot for field engineers — Ahuva Electronic Technologies Pvt. Ltd.",
   "main": "main.js",
   "author": "Ahuva Electronic Technologies Pvt. Ltd.",

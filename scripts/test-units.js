@@ -196,3 +196,6 @@ try { require("../tests/integration/pcap-engine.test.js"); } catch(e) { console.
 try { require("../tests/integration/switch-config.test.js"); } catch(e) { console.error("switch-config integration error:", e.message); }
 // auth-guard uses async timers — run it last independently
 try { require("../tests/unit/auth-guard.test.js"); } catch(e) { console.error("auth-guard suite error:", e.message); }
+try { require("../tests/unit/network-scanner.test.js"); } catch(e) { console.error("network-scanner suite error:", e.message); }
+try { require("../tests/unit/theme-manager.test.js"); } catch(e) { console.error("theme-manager suite error:", e.message); }
+try { require("../tests/unit/ai-providers.test.js"); } catch(e) { console.error("ai-providers suite error:", e.message); }

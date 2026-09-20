@@ -75,5 +75,12 @@ contextBridge.exposeInMainWorld("ahuva", {
   // Auto-updater
   checkUpdate:       ()   => ipcRenderer.invoke("update:check"),
   onUpdateAvailable: cb   => ipcRenderer.on("update:available", (_e, info) => cb(info)),
-  openExternal:      url  => ipcRenderer.invoke("shell:openExternal", url)
+  openExternal:      url  => ipcRenderer.invoke("shell:openExternal", url),
+
+  // Network Scanner
+  scannerStart:      (target, opts) => ipcRenderer.invoke("scanner:start", { target, opts }),
+  scannerNmap:       ()             => ipcRenderer.invoke("scanner:nmap"),
+  scannerWoL:        (mac, bcast)   => ipcRenderer.invoke("scanner:wol", { mac, broadcast: bcast }),
+  scannerTraceroute: (ip)           => ipcRenderer.invoke("scanner:traceroute", { ip }),
+  onScanProgress:    cb             => ipcRenderer.on("scanner:progress", (_e, d) => cb(d)),
 });

@@ -5,10 +5,33 @@
 const log = require("./logger").child("ai");
 
 function buildRequest(settings, systemPrompt, messages, opts = {}) {
-  const provider = String(settings.provider || "anthropic");
-  const model    = String(settings.model || "").trim();
-  const apiKey   = String(settings.apiKey || "").trim();
+  const provider  = String(settings.provider || "anthropic");
+  const model     = String(settings.model || "").trim();
+  const apiKey    = String(settings.apiKey || "").trim();
   const timeoutMs = 120000;
+
+  // Google Gemini via the OpenAI-compatible endpoint
+  if (provider === "google") {
+    const base = String(settings.baseUrl || "https://generativelanguage.googleapis.com/v1beta/openai").replace(/\/+$/, "");
+    return {
+      url: base + "/chat/completions",
+      options: {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          ...(apiKey ? { authorization: "Bearer " + apiKey } : {})
+        },
+        body: JSON.stringify({
+          model: model || "gemini-2.0-flash",
+          messages: [
+            { role: "system", content: systemPrompt },
+            ...messages.map(m => ({ role: m.role, content: String(m.content || "") }))
+          ]
+        })
+      },
+      timeoutMs
+    };
+  }
 
   if (provider === "anthropic") {
     const base = String(settings.baseUrl || "https://api.anthropic.com").replace(/\/+$/, "");
@@ -118,8 +141,13 @@ function parseCopilotReply(text) {
   }
 }
 
-async function callAI(settings, systemPrompt, messages, fetchImpl, opts = {}) {
-  const f = fetchImpl || fetch;
+/** True when this HTTP status is a transient provider error worth retrying. */
+function isRetryableStatus(status) {
+  return status === 429 || status === 503 || status === 529;
+}
+
+async function callAIOnce(settings, systemPrompt, messages, fetchImpl, opts = {}) {
+  const f   = fetchImpl || fetch;
   const req = buildRequest(settings, systemPrompt, messages, opts);
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), req.timeoutMs);
@@ -140,14 +168,37 @@ async function callAI(settings, systemPrompt, messages, fetchImpl, opts = {}) {
       const j = JSON.parse(bodyText);
       msg = (j.error && (j.error.message || j.error.type)) || msg;
     } catch { /* keep raw */ }
+    const err = new Error(`AI provider error (HTTP ${res.status}): ${msg}`);
+    err.status = res.status;
     log.error("AI provider HTTP error", { status: res.status, message: msg.slice(0, 200) });
-    throw new Error(`AI provider error (HTTP ${res.status}): ${msg}`);
+    throw err;
   }
   let data;
   try { data = JSON.parse(bodyText); }
   catch { throw new Error("AI provider returned a non-JSON response."); }
   const text = extractText(settings.provider || "anthropic", data);
   return parseCopilotReply(text);
+}
+
+async function callAI(settings, systemPrompt, messages, fetchImpl, opts = {}) {
+  const MAX_RETRIES = 2;
+  let lastErr;
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      return await callAIOnce(settings, systemPrompt, messages, fetchImpl, opts);
+    } catch (e) {
+      lastErr = e;
+      // Retry on rate-limit / overload; don't retry auth or bad-request errors
+      if (attempt < MAX_RETRIES && e.status && isRetryableStatus(e.status)) {
+        const delay = (attempt + 1) * 3000;
+        log.warn(`Retrying AI request after ${delay}ms (attempt ${attempt + 1})`, { status: e.status });
+        await new Promise(r => setTimeout(r, delay));
+        continue;
+      }
+      break;
+    }
+  }
+  throw lastErr;
 }
 
 module.exports = { buildRequest, extractText, parseCopilotReply, callAI };

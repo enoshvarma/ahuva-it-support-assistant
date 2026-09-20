@@ -25,6 +25,7 @@ const { sanitiseCommand }                = require("./src/validate");
 const { checkForUpdate }                 = require("./src/updater");
 const { analyseCapture }                 = require("./src/pcap-analyser");
 const switchConfig                       = require("./src/switch-config");
+const scanner                            = require("./src/network-scanner");
 const pkg                                = require("./package.json");
 
 let win = null;
@@ -242,10 +243,12 @@ ipcMain.handle("device:parsePing", (_e, text)    => parsePingOutput(text));
 ipcMain.handle("errors:scan",   (_e, text) => extractErrors(text));
 ipcMain.handle("errors:record", (_e, info) => errorLog.record(info));
 
-ipcMain.handle("models:presets", (_e, provider) => ({
-  presets:  models.presetsFor(provider),
-  baseUrl:  models.defaultBaseUrl(provider),
-  model:    models.defaultModel(provider)
+ipcMain.handle("models:presets", (_e, { provider, freeOnly } = {}) => ({
+  presets:       models.presetsFor(provider, !!freeOnly),
+  baseUrl:       models.defaultBaseUrl(provider),
+  model:         models.defaultModel(provider),
+  allProviders:  models.allProviders(),
+  labels:        models.PROVIDER_LABELS,
 }));
 
 ipcMain.handle("mode:prep", (_e, { mode, cmd }) => prepCommandsFor(mode, cmd));
@@ -417,4 +420,30 @@ ipcMain.handle("research:run", async (_e, { vendors }) => {
     sourcesTotal: result.sources.length,
     kbDocs: kbInfo.docCount
   };
+});
+
+// ---------- Network Scanner ----------
+ipcMain.handle("scanner:nmap", () => scanner.nmapAvailable());
+
+ipcMain.handle("scanner:wol", (_e, { mac, broadcast }) =>
+  scanner.sendWoL(String(mac || ""), String(broadcast || "255.255.255.255"))
+);
+
+ipcMain.handle("scanner:traceroute", (_e, { ip }) => scanner.traceroute(String(ip || "")));
+
+ipcMain.handle("scanner:start", async (_e, { target, opts }) => {
+  const scanOpts = {
+    concurrency: Math.min(parseInt(opts?.concurrency) || 50, 150),
+    fullScan:    !!opts?.fullScan,
+    useNmap:     !!opts?.useNmap,
+    pingTimeout: parseInt(opts?.pingTimeout)  || 1000,
+    portTimeout: parseInt(opts?.portTimeout)  || 600,
+    portFallback: !!opts?.portFallback,
+  };
+  const results = await scanner.scanRange(target, scanOpts, (result, done, total) => {
+    if (win && !win.isDestroyed()) {
+      win.webContents.send("scanner:progress", { result, done, total });
+    }
+  });
+  return results;
 });

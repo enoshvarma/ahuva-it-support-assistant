@@ -32,8 +32,13 @@
       <span id="mode-badge" class="mode-badge hidden">—</span>
     </div>
     <div class="top-actions">
+      <div class="theme-switcher" title="Switch UI theme">
+        <button id="theme-dark"   class="theme-btn active" title="Dark theme">◑</button>
+        <button id="theme-light"  class="theme-btn"        title="Light theme">○</button>
+        <button id="theme-hacker" class="theme-btn hacker-btn" title="EV Hacker mode">⬡</button>
+      </div>
       <button id="btn-research" class="ghost" title="Weekly internet research">Research</button>
-      <button id="btn-guide" class="ghost" title="On-site procedure">Field guide</button>
+      <button id="btn-guide"    class="ghost" title="On-site procedure">Field guide</button>
       <button id="btn-settings" class="ghost" title="AI provider settings">AI settings</button>
     </div>
   </header>
@@ -132,9 +137,10 @@
     <!-- RIGHT: copilot -->
     <section id="panel-copilot">
       <div class="side-tabs">
-        <button id="tab-copilot" class="side-tab active">Copilot</button>
-        <button id="tab-packets" class="side-tab">Packets</button>
-        <button id="tab-swcfg"   class="side-tab">Switch Config</button>
+        <button id="tab-copilot"  class="side-tab active">Copilot</button>
+        <button id="tab-packets"  class="side-tab">Packets</button>
+        <button id="tab-swcfg"    class="side-tab">Switch Config</button>
+        <button id="tab-scanner"  class="side-tab">Scanner</button>
       </div>
       <div class="side-body">
         <div id="pane-copilot" class="side-pane">
@@ -224,6 +230,48 @@ Local capture needs Wireshark installed on this laptop (it uses tshark, Wireshar
             <pre id="swcfg-output" class="swcfg-output hidden"></pre>
           </div>
         </div>
+
+        <!-- Network Scanner pane -->
+        <div id="pane-scanner" class="side-pane hidden">
+          <div class="scan-scroll">
+            <!-- Target + controls -->
+            <div class="scan-control-row">
+              <input id="scan-target" placeholder="192.168.1.0/24 or 10.0.0.1-50" class="scan-target-input" />
+              <button id="scan-start" class="primary small">Scan</button>
+              <button id="scan-stop"  class="ghost small hidden">Stop</button>
+            </div>
+            <div class="scan-options-row">
+              <label class="scan-opt">
+                <input type="checkbox" id="scan-full" />
+                <span>Full ports</span>
+              </label>
+              <label class="scan-opt">
+                <input type="checkbox" id="scan-nmap" />
+                <span>Nmap enrichment</span>
+              </label>
+              <label class="scan-opt">
+                <input type="checkbox" id="scan-port-fallback" />
+                <span>Probe offline hosts</span>
+              </label>
+            </div>
+            <!-- Progress bar -->
+            <div id="scan-progress-wrap" class="hidden">
+              <div class="scan-progress-bar"><div id="scan-progress-fill" style="width:0%"></div></div>
+              <span id="scan-progress-text" class="muted">0 / 0</span>
+            </div>
+            <!-- Summary row -->
+            <div id="scan-summary" class="scan-summary hidden"></div>
+            <!-- WoL quick-send -->
+            <div id="scan-wol-row" class="scan-wol hidden">
+              <span class="muted">Wake-on-LAN:</span>
+              <input id="scan-wol-mac" placeholder="AA:BB:CC:DD:EE:FF" />
+              <button id="scan-wol-send" class="ghost small">Send WoL</button>
+            </div>
+            <!-- Results table -->
+            <div id="scan-results" class="scan-results"></div>
+          </div>
+        </div>
+
       </div>
     </section>
   </main>
@@ -235,7 +283,7 @@ Local capture needs Wireshark installed on this laptop (it uses tshark, Wireshar
     <div class="sb-item"><span class="sb-label">CMDS</span><span class="sb-val" id="sb-cmds">0</span></div>
     <div class="sb-item"><span class="sb-label">ERRORS</span><span class="sb-val" id="sb-errors">0</span></div>
     <div class="sb-spacer"></div>
-    <div class="sb-item"><span class="sb-val" id="sb-version">v 1.6.0</span></div>
+    <div class="sb-item"><span class="sb-val" id="sb-version">v 1.7.0</span></div>
   </footer>
 
   <!-- Session consent + auto-backup modal -->
@@ -350,27 +398,47 @@ Local capture needs Wireshark installed on this laptop (it uses tshark, Wireshar
 
   <!-- Settings modal -->
   <div id="modal-settings" class="modal hidden">
-    <div class="modal-card">
+    <div class="modal-card settings-card">
       <h3>AI provider</h3>
       <p class="muted">Switch provider, model, key or endpoint any time — takes effect on the next message.</p>
+
       <div class="field"><label>Provider</label>
         <select id="s-provider">
-          <option value="anthropic">Anthropic (Claude)</option>
-          <option value="openai">OpenAI</option>
-          <option value="openai-compatible">OpenAI-compatible (OpenRouter / Groq / custom)</option>
-          <option value="ollama">Ollama (local, offline)</option>
+          <optgroup label="── Cloud ──────────────────">
+            <option value="anthropic">Anthropic (Claude)</option>
+            <option value="openai">OpenAI (GPT / o-series)</option>
+            <option value="google">Google (Gemini)</option>
+          </optgroup>
+          <optgroup label="── Aggregators ────────────">
+            <option value="openai-compatible">OpenRouter / Groq / Together / custom</option>
+          </optgroup>
+          <optgroup label="── Local ──────────────────">
+            <option value="ollama">Ollama (local, offline)</option>
+          </optgroup>
         </select>
       </div>
-      <div class="field"><label>Model <span class="muted">(pick a preset or type an ID)</span></label>
+
+      <div class="field">
+        <div class="settings-model-header">
+          <label>Model <span class="muted">(pick a preset or type an ID)</span></label>
+          <label class="scan-opt" style="margin:0">
+            <input type="checkbox" id="s-free-only" />
+            <span class="free-badge">🆓 Free only</span>
+          </label>
+        </div>
         <input id="s-model" list="model-presets" placeholder="claude-sonnet-4-6" />
         <datalist id="model-presets"></datalist>
       </div>
-      <div class="field"><label>Available presets — cost guide</label>
-        <div id="model-hint" class="pkt-status" style="margin:0"></div>
+
+      <div class="field"><label>Model presets — cost guide</label>
+        <div id="model-hint" class="pkt-status model-hint-list" style="margin:0"></div>
       </div>
+
       <div class="field" id="s-key-field"><label>API key</label><input id="s-key" type="password" /></div>
-      <div class="field" id="s-base-field"><label>Base URL <span class="muted">(optional for Anthropic/OpenAI; required for compatible endpoints)</span></label>
+      <div class="field" id="s-base-field">
+        <label>Base URL <span class="muted">(optional for Anthropic/OpenAI; required for OpenRouter/Groq/custom)</span></label>
         <input id="s-base" placeholder="https://openrouter.ai/api/v1  or  http://localhost:11434" />
+        <div id="s-base-hint" class="muted" style="margin-top:4px;font-size:11px"></div>
       </div>
       <div class="divider"></div>
       <div class="field check-row">
