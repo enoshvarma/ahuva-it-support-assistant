@@ -113,7 +113,7 @@ Run the installer and follow the prompts.
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/your-org/ahuva-it-support-assistant.git
+   git clone https://github.com/enoshvarma/ahuva-it-support-assistant.git
    cd ahuva-it-support-assistant
    ```
 
