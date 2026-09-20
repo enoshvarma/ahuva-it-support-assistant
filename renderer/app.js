@@ -820,27 +820,30 @@ function switchPane(which) {
 (function initTheme() {
   const saved = localStorage.getItem("ahuva-theme") || "dark";
   applyTheme(saved);
-  $("theme-dark").onclick   = () => applyTheme("dark");
-  $("theme-light").onclick  = () => applyTheme("light");
-  $("theme-hacker").onclick = () => applyTheme("hacker");
+  $("theme-dark").onclick  = () => applyTheme("dark");
+  $("theme-light").onclick = () => applyTheme("light");
+  $("theme-kali").onclick  = () => applyTheme("kali");
 })();
 
 function applyTheme(name) {
   document.documentElement.setAttribute("data-theme", name === "dark" ? "" : name);
-  ["dark","light","hacker"].forEach(t => {
+  ["dark","light","kali"].forEach(t => {
     const btn = $("theme-" + t);
     if (btn) btn.classList.toggle("active", t === name);
   });
   localStorage.setItem("ahuva-theme", name);
-  // Update xterm theme for hacker/light modes
-  if (name === "hacker") {
-    term.options.theme = { background: "#000000", foreground: "#00ff66", cursor: "#00ff66",
-      selectionBackground: "rgba(0,255,102,.25)",
-      black: "#0a0a0a", red: "#ff2244", green: "#00ff66", yellow: "#ffcc00",
-      blue: "#00ccff", magenta: "#cc00ff", cyan: "#00cccc", white: "#00ff66",
-      brightBlack: "#1a3a1a", brightRed: "#ff4466", brightGreen: "#33ff88",
-      brightYellow: "#ffdd33", brightBlue: "#33ddff", brightMagenta: "#dd33ff",
-      brightCyan: "#33dddd", brightWhite: "#00ff88" };
+  // Sync xterm.js terminal palette to the active theme
+  if (name === "kali") {
+    // Catppuccin Mocha — Kali Linux 2024 default palette
+    term.options.theme = {
+      background: "#1e1e2e", foreground: "#cdd6f4", cursor: "#f5e0dc",
+      cursorAccent: "#1e1e2e", selectionBackground: "rgba(88,91,112,.5)",
+      black: "#45475a",   red: "#f38ba8",   green: "#a6e3a1",  yellow: "#f9e2af",
+      blue: "#89b4fa",    magenta: "#f5c2e7", cyan: "#94e2d5",  white: "#bac2de",
+      brightBlack: "#585b70", brightRed: "#f38ba8", brightGreen: "#a6e3a1",
+      brightYellow: "#f9e2af", brightBlue: "#89b4fa", brightMagenta: "#f5c2e7",
+      brightCyan: "#94e2d5", brightWhite: "#a6adc8"
+    };
   } else if (name === "light") {
     term.options.theme = { background: "#1e1e1e", foreground: "#d4d4d4", cursor: "#0077a8",
       selectionBackground: "rgba(0,119,168,.25)" };

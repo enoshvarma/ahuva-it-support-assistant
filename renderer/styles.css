@@ -63,29 +63,32 @@
   --faint:     #c1d0e4;
 }
 
-/* ── EV / HACKER MODE ───────────────────────────────────────── */
-[data-theme="hacker"] {
-  --bg:        #000000;
-  --panel:     #0a0a0a;
-  --panel-2:   #0f1a0f;
-  --panel-3:   #122012;
-  --line:      #1a3a1a;
-  --line-soft: #0d200d;
-  --teal:      #00ff66;
-  --teal-dim:  #00cc55;
-  --teal-glow: rgba(0,255,102,.18);
-  --ok:        #00ff66;
-  --amber:     #ffcc00;
-  --amber-dim: #cc9900;
-  --red:       #ff2244;
-  --violet:    #cc00ff;
-  --ai:        #00ff66;
-  --text:      #00ff66;
-  --text-2:    #00cc55;
-  --muted:     #1a5c1a;
-  --faint:     #0d300d;
-  --mono: "JetBrains Mono", "Fira Code", "Cascadia Code", Consolas, monospace;
-  --ui:   "JetBrains Mono", "Fira Code", "Cascadia Code", Consolas, monospace;
+/* ── KALI LINUX / CATPPUCCIN MOCHA TOKEN OVERRIDES ─────────── */
+[data-theme="kali"] {
+  --bg:        #1e1e2e;
+  --panel:     #181825;
+  --panel-1:   #181825;
+  --panel-2:   #11111b;
+  --panel-3:   #313244;
+  --panel-4:   #45475a;
+  --line:      #45475a;
+  --line-soft: #313244;
+  --teal:      #89b4fa;
+  --teal-dim:  #74c7ec;
+  --teal-glow: rgba(137,180,250,.18);
+  --ok:        #a6e3a1;
+  --danger:    #f38ba8;
+  --amber:     #f9e2af;
+  --amber-dim: #fab387;
+  --red:       #f38ba8;
+  --violet:    #cba6f7;
+  --ai:        #89b4fa;
+  --text:      #cdd6f4;
+  --text-2:    #bac2de;
+  --muted:     #6c7086;
+  --faint:     #313244;
+  --mono: "JetBrains Mono", "Cascadia Code", "Fira Code", Consolas, monospace;
+  --ui:   "JetBrains Mono", "Cascadia Code", "Fira Code", Consolas, monospace;
 }
 
 html, body { height: 100%; }
@@ -656,137 +659,174 @@ button.ghost.small { font-size: 11.5px; padding: 5px 10px; }
 [data-theme="light"] .modal-card { background: #ffffff; box-shadow: 0 8px 48px rgba(0,0,0,.15); }
 [data-theme="light"] .drawer { background: #ffffff; box-shadow: -8px 0 30px rgba(0,0,0,.1); }
 
-/* ═══ HACKER MODE OVERRIDES ════════════════════════════════════ */
-[data-theme="hacker"] body {
-  font-family: var(--mono);
-  text-shadow: 0 0 8px rgba(0,255,102,.3);
-}
-[data-theme="hacker"] #topbar {
-  background: #000;
-  border-bottom: 1px solid #00ff66;
-  box-shadow: 0 0 20px rgba(0,255,102,.1);
-}
-[data-theme="hacker"] .brand-mark { color: #00ff66; text-shadow: 0 0 10px #00ff66; }
-[data-theme="hacker"] .brand-icon { background: transparent; border: 1px solid #00ff66; }
-[data-theme="hacker"] .brand-icon svg { fill: #00ff66; }
-[data-theme="hacker"] #statusbar { background: #000; border-top: 1px solid #1a3a1a; }
-[data-theme="hacker"] input, [data-theme="hacker"] select, [data-theme="hacker"] textarea {
-  background: #0a0a0a; border-color: #1a3a1a; color: #00ff66;
-  font-family: var(--mono); caret-color: #00ff66;
-}
-[data-theme="hacker"] input::placeholder, [data-theme="hacker"] textarea::placeholder { color: #1a5c1a; }
-[data-theme="hacker"] input:focus, [data-theme="hacker"] select:focus, [data-theme="hacker"] textarea:focus {
-  border-color: #00ff66; box-shadow: 0 0 0 2px rgba(0,255,102,.2), 0 0 12px rgba(0,255,102,.1);
-}
-[data-theme="hacker"] select {
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' stroke='%2300ff66' stroke-width='1.5' fill='none' stroke-linecap='round'/></svg>");
-  background-color: #0a0a0a;
-}
-[data-theme="hacker"] .primary {
-  background: #00ff66; color: #000; border-color: #00cc55;
-  font-family: var(--mono); text-shadow: none;
-  box-shadow: 0 0 10px rgba(0,255,102,.4);
-}
-[data-theme="hacker"] .primary:hover { background: #00cc55; box-shadow: 0 0 16px rgba(0,255,102,.6); }
-[data-theme="hacker"] .ghost { color: #00cc55; border-color: #1a3a1a; font-family: var(--mono); }
-[data-theme="hacker"] .ghost:hover { background: #0a1a0a; border-color: #00ff66; color: #00ff66; }
-[data-theme="hacker"] .modal-card {
-  background: #050a05; border: 1px solid #00ff66;
-  box-shadow: 0 0 40px rgba(0,255,102,.2), 0 28px 80px rgba(0,0,0,.9);
-}
-[data-theme="hacker"] .modal-card h3 { color: #00ff66; text-shadow: 0 0 8px #00ff66; }
-[data-theme="hacker"] .msg-ai { border-left-color: #00ff66; background: rgba(0,255,102,.04); }
-[data-theme="hacker"] .cmd-text { color: #00ff66; }
-[data-theme="hacker"] .dot-safe { background: #00ff66; box-shadow: 0 0 6px #00ff66; }
-[data-theme="hacker"] .led-on { background: #00ff66; box-shadow: 0 0 0 2px rgba(0,255,102,.3); }
-[data-theme="hacker"] .side-tab.active { color: #00ff66; border-bottom-color: #00ff66; }
-[data-theme="hacker"] .drawer { background: #050a05; border-left: 1px solid #00ff66; }
-/* ── Hacker keyframes ─────────────────────────────────────────── */
-@keyframes hk-neon-pulse {
-  0%, 100% { text-shadow: 0 0 6px rgba(0,255,102,.5), 0 0 18px rgba(0,255,102,.2); opacity: 1; }
-  50%       { text-shadow: 0 0 12px rgba(0,255,102,.9), 0 0 35px rgba(0,255,102,.4); opacity: .92; }
-}
-@keyframes hk-border-pulse {
-  0%, 100% { box-shadow: 0 0 0 1px rgba(0,255,102,.4),  0 0 12px rgba(0,255,102,.08); }
-  50%       { box-shadow: 0 0 0 1px rgba(0,255,102,.9),  0 0 28px rgba(0,255,102,.25); }
-}
-@keyframes hk-scan-sweep {
-  0%   { transform: translateY(-100vh); opacity: .6; }
-  100% { transform: translateY(100vh);  opacity: .6; }
-}
-@keyframes hk-boot-in {
-  0%   { opacity: 0; transform: translateY(-4px) scaleY(.92); filter: blur(2px); }
-  60%  { opacity: 1; transform: translateY(1px)  scaleY(1.01); filter: blur(0); }
-  100% { opacity: 1; transform: translateY(0)    scaleY(1); }
-}
-@keyframes hk-chip-glow {
-  0%   { opacity: 0; transform: scale(.88); }
-  70%  { opacity: 1; transform: scale(1.04); }
-  100% { opacity: 1; transform: scale(1); }
-}
-@keyframes hk-progress-pulse {
-  0%, 100% { box-shadow: 0 0 6px #00ff66, 0 0 18px rgba(0,255,102,.3); }
-  50%       { box-shadow: 0 0 14px #00ff66, 0 0 40px rgba(0,255,102,.6); }
-}
-@keyframes hk-cursor-blink {
-  0%, 49% { border-right-color: #00ff66; }
-  50%, 100%{ border-right-color: transparent; }
+/* ═══ KALI LINUX / CATPPUCCIN MOCHA THEME ══════════════════════ */
+[data-theme="kali"] {
+  --bg:        #1e1e2e;
+  --panel-1:   #181825;
+  --panel-2:   #11111b;
+  --panel-3:   #313244;
+  --panel-4:   #45475a;
+  --text:      #cdd6f4;
+  --text-2:    #bac2de;
+  --muted:     #6c7086;
+  --line:      #45475a;
+  --line-soft: #313244;
+  --teal:      #89b4fa;
+  --teal-dim:  #74c7ec;
+  --ok:        #a6e3a1;
+  --danger:    #f38ba8;
+  --amber:     #f9e2af;
+  --mono:      "JetBrains Mono", "Cascadia Code", "Fira Code", Consolas, monospace;
 }
 
-/* Animated scanline sweep beam */
-[data-theme="hacker"] body::before {
-  content: ""; pointer-events: none; position: fixed; left: 0; right: 0;
-  height: 120px; z-index: 9998;
-  background: linear-gradient(to bottom, transparent, rgba(0,255,102,.04) 40%, rgba(0,255,102,.09) 50%, rgba(0,255,102,.04) 60%, transparent);
-  animation: hk-scan-sweep 5s linear infinite;
+/* Global smooth transitions applied to all themes */
+*, *::before, *::after {
+  transition: background-color .18s ease, border-color .18s ease,
+              color .18s ease, box-shadow .18s ease, opacity .15s ease;
 }
-/* Static scanlines overlay */
-[data-theme="hacker"] body::after {
-  content: ""; pointer-events: none; position: fixed; inset: 0; z-index: 9999;
-  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,.05) 2px, rgba(0,0,0,.05) 4px);
+/* Don't transition transforms/animations themselves */
+.scan-host, .scan-port-chip, [class*="kali-"] { transition-property: background-color, border-color, color, box-shadow, opacity; }
+
+[data-theme="kali"] body { background: var(--bg); color: var(--text); }
+
+[data-theme="kali"] #topbar {
+  background: #181825;
+  border-bottom: 1px solid #45475a;
+  box-shadow: 0 1px 0 #313244;
+}
+[data-theme="kali"] .brand-mark { color: #89b4fa; }
+[data-theme="kali"] .brand-icon { background: rgba(137,180,250,.1); border: 1px solid rgba(137,180,250,.3); }
+[data-theme="kali"] .brand-icon svg { fill: #89b4fa; }
+[data-theme="kali"] .brand-sub  { color: #6c7086; }
+
+[data-theme="kali"] #statusbar  { background: #11111b; border-top: 1px solid #313244; }
+[data-theme="kali"] .side-panel { background: #181825; border-right: 1px solid #313244; }
+[data-theme="kali"] .side-pane  { background: #1e1e2e; }
+[data-theme="kali"] .pane-body  { background: #1e1e2e; }
+
+[data-theme="kali"] input,
+[data-theme="kali"] select,
+[data-theme="kali"] textarea {
+  background: #11111b; border-color: #45475a; color: #cdd6f4;
+  caret-color: #89b4fa;
+}
+[data-theme="kali"] input::placeholder,
+[data-theme="kali"] textarea::placeholder { color: #585b70; }
+
+[data-theme="kali"] input:focus,
+[data-theme="kali"] select:focus,
+[data-theme="kali"] textarea:focus {
+  border-color: #89b4fa;
+  box-shadow: 0 0 0 2px rgba(137,180,250,.2);
+  outline: none;
+}
+[data-theme="kali"] select {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' stroke='%2389b4fa' stroke-width='1.5' fill='none' stroke-linecap='round'/></svg>");
+  background-color: #11111b;
 }
 
-/* Neon pulse on brand text */
-[data-theme="hacker"] .brand-mark { animation: hk-neon-pulse 2.4s ease-in-out infinite; }
-
-/* Topbar border shimmer */
-[data-theme="hacker"] #topbar { animation: hk-border-pulse 2s ease-in-out infinite; }
-
-/* Active side-tab neon pulse */
-[data-theme="hacker"] .side-tab.active { animation: hk-neon-pulse 2s ease-in-out infinite; }
-
-/* Primary button pulse */
-[data-theme="hacker"] .primary { animation: hk-border-pulse 1.8s ease-in-out infinite; }
-
-/* Progress bar animated glow */
-[data-theme="hacker"] .scan-progress-bar > div { animation: hk-progress-pulse 1.2s ease-in-out infinite; }
-
-/* Scan host cards: animated entry */
-[data-theme="hacker"] .scan-host {
-  animation: hk-boot-in .28s ease-out both;
-  border: 1px solid #1a3a1a;
+[data-theme="kali"] .primary {
+  background: #89b4fa; color: #1e1e2e; border-color: #74c7ec;
+  font-weight: 600; text-shadow: none;
+  box-shadow: 0 2px 12px rgba(137,180,250,.3);
 }
-[data-theme="hacker"] .scan-host.online {
-  border-left: 3px solid #00ff66;
-  animation: hk-boot-in .28s ease-out both, hk-border-pulse 3s ease-in-out 1s infinite;
+[data-theme="kali"] .primary:hover {
+  background: #74c7ec; box-shadow: 0 4px 20px rgba(137,180,250,.5);
+  transform: translateY(-1px);
 }
-[data-theme="hacker"] .scan-host:hover { border-color: #00ff66; box-shadow: 0 0 14px rgba(0,255,102,.15); }
+[data-theme="kali"] .ghost {
+  color: #89b4fa; border-color: #45475a;
+}
+[data-theme="kali"] .ghost:hover {
+  background: rgba(137,180,250,.08); border-color: #89b4fa; color: #cdd6f4;
+}
 
-/* Port chips pop-in */
-[data-theme="hacker"] .scan-port-chip { animation: hk-chip-glow .2s ease-out both; }
-[data-theme="hacker"] .scan-port-chip:nth-child(2) { animation-delay: .04s; }
-[data-theme="hacker"] .scan-port-chip:nth-child(3) { animation-delay: .08s; }
-[data-theme="hacker"] .scan-port-chip:nth-child(4) { animation-delay: .12s; }
-[data-theme="hacker"] .scan-port-chip:nth-child(n+5) { animation-delay: .16s; }
+[data-theme="kali"] .side-tab         { color: #6c7086; }
+[data-theme="kali"] .side-tab:hover   { color: #bac2de; background: rgba(137,180,250,.06); }
+[data-theme="kali"] .side-tab.active  { color: #89b4fa; border-bottom-color: #89b4fa; }
 
-/* Input caret blinking cursor effect */
-[data-theme="hacker"] input, [data-theme="hacker"] textarea {
-  border-right: 2px solid transparent;
-  animation: hk-cursor-blink 1s step-end infinite;
+[data-theme="kali"] .modal-card {
+  background: #181825; border: 1px solid #45475a;
+  box-shadow: 0 24px 80px rgba(0,0,0,.7), 0 0 0 1px rgba(137,180,250,.08);
 }
-[data-theme="hacker"] input:focus, [data-theme="hacker"] textarea:focus {
-  animation: hk-cursor-blink 1s step-end infinite;
+[data-theme="kali"] .modal-card h3    { color: #89b4fa; }
+[data-theme="kali"] .drawer           { background: #181825; border-left: 1px solid #313244; }
+
+[data-theme="kali"] .msg-ai           { border-left-color: #89b4fa; background: rgba(137,180,250,.04); }
+[data-theme="kali"] .msg-sys          { color: #6c7086; }
+[data-theme="kali"] .cmd-text         { color: #89b4fa; }
+[data-theme="kali"] .dot-safe         { background: #a6e3a1; box-shadow: 0 0 6px rgba(166,227,161,.5); }
+[data-theme="kali"] .dot-caution      { background: #f9e2af; }
+[data-theme="kali"] .dot-danger       { background: #f38ba8; }
+[data-theme="kali"] .led-on           { background: #89b4fa; box-shadow: 0 0 0 2px rgba(137,180,250,.25); }
+[data-theme="kali"] .tag              { background: rgba(137,180,250,.12); color: #89b4fa; }
+[data-theme="kali"] .seg-btn.active   { background: #89b4fa; color: #1e1e2e; }
+
+/* Kali scanner overrides */
+[data-theme="kali"] .scan-host        { background: #181825; border-color: #313244; }
+[data-theme="kali"] .scan-host.online { border-left-color: #a6e3a1; }
+[data-theme="kali"] .scan-host:hover  { border-color: #89b4fa; box-shadow: 0 0 0 1px rgba(137,180,250,.2); }
+[data-theme="kali"] .scan-port-chip   { background: rgba(137,180,250,.08); border-color: rgba(137,180,250,.2); color: #89b4fa; }
+[data-theme="kali"] .scan-progress-bar > div { background: linear-gradient(90deg, #89b4fa, #cba6f7); }
+[data-theme="kali"] .dot-online       { background: #a6e3a1; box-shadow: 0 0 6px rgba(166,227,161,.6); }
+[data-theme="kali"] .scan-mac         { color: #585b70; }
+[data-theme="kali"] .scan-toast-ok    { background: rgba(166,227,161,.1); color: #a6e3a1; border-color: rgba(166,227,161,.25); }
+[data-theme="kali"] .scan-modal-card  { background: #181825; border-color: #89b4fa; }
+[data-theme="kali"] .scan-modal-title { color: #89b4fa; }
+[data-theme="kali"] .scan-modal-body  { color: #bac2de; }
+[data-theme="kali"] .scan-summary     { background: #11111b; border-color: #313244; }
+[data-theme="kali"] .scan-stat-val    { color: #89b4fa; }
+
+/* ── Kali / Catppuccin keyframes ──────────────────────────────── */
+@keyframes kali-fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
+@keyframes kali-slide-in {
+  from { opacity: 0; transform: translateX(-8px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes kali-chip-pop {
+  from { opacity: 0; transform: scale(.82); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes kali-bar-shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+@keyframes kali-glow-pulse {
+  0%, 100% { box-shadow: 0 0 0 1px rgba(137,180,250,.3), 0 0 8px rgba(137,180,250,.1); }
+  50%       { box-shadow: 0 0 0 1px rgba(137,180,250,.6), 0 0 18px rgba(137,180,250,.2); }
+}
+
+/* Smooth entry for scan host cards */
+[data-theme="kali"] .scan-host {
+  animation: kali-fade-in .22s cubic-bezier(.4,0,.2,1) both;
+}
+[data-theme="kali"] .scan-host.online {
+  animation: kali-fade-in .22s cubic-bezier(.4,0,.2,1) both,
+             kali-glow-pulse 3s ease-in-out 1s infinite;
+}
+
+/* Port chip staggered entry */
+[data-theme="kali"] .scan-port-chip               { animation: kali-chip-pop .18s ease-out both; }
+[data-theme="kali"] .scan-port-chip:nth-child(2)  { animation-delay: .04s; }
+[data-theme="kali"] .scan-port-chip:nth-child(3)  { animation-delay: .08s; }
+[data-theme="kali"] .scan-port-chip:nth-child(n+4){ animation-delay: .12s; }
+
+/* Progress bar shimmer */
+[data-theme="kali"] .scan-progress-bar > div {
+  background: linear-gradient(90deg, #89b4fa 0%, #cba6f7 50%, #89b4fa 100%);
+  background-size: 200% 100%;
+  animation: kali-bar-shimmer 2s linear infinite;
+}
+
+/* Theme button */
+[data-theme="kali"] .kali-btn.active,
+.kali-btn.active { background: rgba(137,180,250,.2); color: #89b4fa; }
+[data-theme="kali"] .theme-btn { color: #585b70; }
+[data-theme="kali"] .theme-btn:hover { color: #bac2de; }
+[data-theme="kali"] .theme-btn.active { background: rgba(137,180,250,.15); color: #89b4fa; }
 
 /* ═══ THEME SWITCHER ════════════════════════════════════════════ */
 .theme-switcher {
@@ -800,9 +840,10 @@ button.ghost.small { font-size: 11.5px; padding: 5px 10px; }
 }
 .theme-btn:hover { color: var(--teal); }
 .theme-btn.active { background: var(--panel-3); color: var(--teal); }
-.hacker-btn.active { background: rgba(0,255,102,.15); color: #00ff66; text-shadow: 0 0 6px #00ff66; }
-[data-theme="hacker"] .theme-btn { color: #1a5c1a; }
-[data-theme="hacker"] .theme-btn.active { background: rgba(0,255,102,.2); color: #00ff66; }
+.kali-btn.active { background: rgba(137,180,250,.18); color: #89b4fa; }
+[data-theme="kali"] .theme-btn { color: #585b70; }
+[data-theme="kali"] .theme-btn:hover { color: #89b4fa; }
+[data-theme="kali"] .theme-btn.active { background: rgba(137,180,250,.15); color: #89b4fa; }
 
 /* ═══ SCANNER PANE ══════════════════════════════════════════════ */
 .scan-scroll { flex: 1; overflow-y: auto; padding-right: 2px; display: flex; flex-direction: column; gap: 8px; }
@@ -882,16 +923,7 @@ button.ghost.small { font-size: 11.5px; padding: 5px 10px; }
 .scan-modal-title { font-weight: 700; font-family: var(--mono); color: var(--teal); font-size: 13px; }
 .scan-modal-body  { flex: 1; overflow-y: auto; padding: 14px 16px; font-size: 12px; font-family: var(--mono); color: var(--text-2); white-space: pre-wrap; margin: 0; }
 
-/* Hacker theme scanner overrides */
-[data-theme="hacker"] .scan-host.online  { border-left-color: #00ff66; }
-[data-theme="hacker"] .scan-port-chip    { background: rgba(0,255,102,.07); border-color: rgba(0,255,102,.25); color: #00cc55; }
-[data-theme="hacker"] .scan-progress-bar > div { background: #00ff66; box-shadow: 0 0 8px #00ff66; }
-[data-theme="hacker"] .dot-online        { background: #00ff66; box-shadow: 0 0 8px #00ff66; }
-[data-theme="hacker"] .scan-mac          { color: #1a5c1a; }
-[data-theme="hacker"] .scan-toast-ok     { background: rgba(0,255,102,.08); color: #00ff66; border-color: rgba(0,255,102,.3); }
-[data-theme="hacker"] .scan-modal-card   { background: #050a05; border-color: #00ff66; box-shadow: 0 0 40px rgba(0,255,102,.15), 0 24px 80px rgba(0,0,0,.9); }
-[data-theme="hacker"] .scan-modal-title  { color: #00ff66; text-shadow: 0 0 8px #00ff66; }
-[data-theme="hacker"] .scan-modal-body   { color: #00cc55; }
+/* (kali scanner overrides are above in the Kali theme block) */
 
 /* ═══ SETTINGS MODAL ENHANCEMENTS ══════════════════════════════ */
 .settings-card { max-height: 90vh; }
