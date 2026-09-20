@@ -920,31 +920,157 @@ function updateScanProgress(done, total) {
 function appendScanHost(r) {
   const el = document.createElement("div");
   el.className = "scan-host " + (r.status || "offline");
-  el.dataset.ip = r.ip;
+  el.dataset.ip  = r.ip;
+  el.dataset.mac = r.mac || "";
 
-  const portChips = (r.openPorts || []).slice(0, 10).map(p =>
-    `<span class="scan-port-chip">${p.port}/${p.service}</span>`).join("");
+  // Escape user-visible strings (no onclick attributes — CSP blocks inline scripts)
+  const safeIp       = r.ip.replace(/[<>"&]/g, "");
+  const safeHostname = (r.hostname || "").replace(/[<>"&]/g, "");
+  const safeVendor   = (r.vendor   || "").replace(/[<>"&]/g, "");
+  const safeMac      = (r.mac      || "").replace(/[<>"&]/g, "");
 
-  el.innerHTML = `
-    <div class="scan-host-row1">
-      <span class="scan-ip">${r.ip}</span>
-      <span class="scan-hostname">${r.hostname || ""}</span>
-      <span class="scan-vendor">${r.vendor || ""}</span>
-    </div>
-    ${r.mac ? `<div class="muted" style="font-size:10.5px;margin-top:2px;font-family:var(--mono)">${r.mac}</div>` : ""}
-    ${portChips ? `<div class="scan-ports">${portChips}</div>` : ""}
-    <div class="scan-host-actions">
-      <button class="ghost small" onclick="scanSSH('${r.ip}')">SSH</button>
-      <button class="ghost small" onclick="scanTelnet('${r.ip}')">Telnet</button>
-      ${r.mac ? `<button class="ghost small" onclick="scanWoL('${r.mac}')">WoL</button>` : ""}
-      <button class="ghost small" onclick="scanTrace('${r.ip}')">Trace</button>
-    </div>`;
+  const portChips = (r.openPorts || []).slice(0, 12).map(p =>
+    `<span class="scan-port-chip" title="${p.service}">${p.port}/${p.service}</span>`).join("");
+
+  const hasSSH     = (r.openPorts || []).some(p => p.port === 22);
+  const hasTelnet  = (r.openPorts || []).some(p => p.port === 23);
+  const hasHTTP    = (r.openPorts || []).some(p => p.port === 80 || p.port === 443 || p.port === 8080);
+  const hasRDP     = (r.openPorts || []).some(p => p.port === 3389);
+
+  el.innerHTML =
+    `<div class="scan-host-row1">
+       <span class="scan-status-dot ${r.status === "online" ? "dot-online" : "dot-offline"}"></span>
+       <span class="scan-ip">${safeIp}</span>
+       <span class="scan-hostname">${safeHostname}</span>
+       <span class="scan-vendor">${safeVendor}</span>
+     </div>` +
+    (safeMac ? `<div class="scan-mac">${safeMac}</div>` : "") +
+    (portChips ? `<div class="scan-ports">${portChips}</div>` : "") +
+    `<div class="scan-host-actions">
+       <button class="ghost small scan-btn" data-action="ssh"     title="Connect via SSH (port 22)">SSH${hasSSH ? " ●" : ""}</button>
+       <button class="ghost small scan-btn" data-action="telnet"  title="Connect via Telnet (port 23)">Telnet${hasTelnet ? " ●" : ""}</button>
+       <button class="ghost small scan-btn" data-action="http"    title="Open in browser" ${hasHTTP ? "" : "disabled"}>Web</button>
+       <button class="ghost small scan-btn" data-action="rdp"     title="Remote Desktop"  ${hasRDP  ? "" : "disabled"}>RDP</button>
+       ${safeMac ? `<button class="ghost small scan-btn" data-action="wol" title="Send Wake-on-LAN magic packet">WoL</button>` : ""}
+       <button class="ghost small scan-btn" data-action="ping"    title="Ping host">Ping</button>
+       <button class="ghost small scan-btn" data-action="trace"   title="Traceroute">Trace</button>
+       <button class="ghost small scan-btn scan-copy-btn" data-action="copy" title="Copy IP">⎘</button>
+     </div>`;
 
   $("scan-results").appendChild(el);
 }
 
+// Event delegation for scanner host buttons — no inline onclick (blocked by CSP)
+$("scan-results").addEventListener("click", async e => {
+  const btn = e.target.closest(".scan-btn");
+  if (!btn) return;
+  const host = btn.closest(".scan-host");
+  const ip   = host?.dataset.ip  || "";
+  const mac  = host?.dataset.mac || "";
+  const action = btn.dataset.action;
+
+  switch (action) {
+    case "ssh":
+      $("f-host").value = ip;
+      setConnType("ssh");
+      switchPane("copilot");
+      sysMsg(`IP ${ip} loaded — set credentials and click Connect.`);
+      break;
+
+    case "telnet":
+      $("f-host").value = ip;
+      setConnType("telnet");
+      switchPane("copilot");
+      sysMsg(`IP ${ip} loaded — click Connect for Telnet.`);
+      break;
+
+    case "http": {
+      const port = host.querySelector(".scan-port-chip") ? "" : "";
+      const scheme = (host.dataset.ip && Array.from(host.querySelectorAll(".scan-port-chip"))
+        .some(c => c.textContent.startsWith("443"))) ? "https" : "http";
+      window.ahuva.openExternal(`${scheme}://${ip}`);
+      break;
+    }
+
+    case "rdp":
+      window.ahuva.openExternal(`rdp://full%20address=s:${ip}`);
+      break;
+
+    case "wol":
+      if (!mac) { sysMsg("No MAC address recorded for this host.", true); break; }
+      $("scan-wol-mac").value = mac;
+      $("scan-wol-row").classList.remove("hidden");
+      try {
+        await window.ahuva.scannerWoL(mac, "255.255.255.255");
+        btn.textContent = "Sent ✓"; btn.disabled = true;
+        setTimeout(() => { btn.textContent = "WoL"; btn.disabled = false; }, 3000);
+      } catch (err) { sysMsg("WoL error: " + err.message, true); }
+      break;
+
+    case "ping": {
+      btn.disabled = true; btn.textContent = "…";
+      try {
+        const res = await window.ahuva.scannerStart(ip, { concurrency: 1, fullScan: false });
+        const alive = res[0]?.status === "online";
+        showScanToast(host, alive ? `${ip} is reachable` : `${ip} did not respond`, alive ? "ok" : "err");
+      } catch (err) { showScanToast(host, "Ping failed: " + err.message, "err"); }
+      finally { btn.disabled = false; btn.textContent = "Ping"; }
+      break;
+    }
+
+    case "trace": {
+      btn.disabled = true; btn.textContent = "…";
+      showScanToast(host, "Running traceroute…", "info");
+      try {
+        const res = await window.ahuva.scannerTraceroute(ip);
+        showScanModal(`Traceroute — ${ip}`, res.output || "No output");
+      } catch (err) { showScanToast(host, "Traceroute error: " + err.message, "err"); }
+      finally { btn.disabled = false; btn.textContent = "Trace"; }
+      break;
+    }
+
+    case "copy":
+      navigator.clipboard.writeText(ip).catch(() => {});
+      btn.textContent = "✓";
+      setTimeout(() => { btn.textContent = "⎘"; }, 1500);
+      break;
+  }
+});
+
+function showScanToast(hostEl, msg, type) {
+  let t = hostEl.querySelector(".scan-toast");
+  if (!t) { t = document.createElement("div"); t.className = "scan-toast"; hostEl.appendChild(t); }
+  t.textContent = msg;
+  t.className = `scan-toast scan-toast-${type}`;
+  clearTimeout(t._tid);
+  if (type !== "info") t._tid = setTimeout(() => t.remove(), 4000);
+}
+
+function showScanModal(title, content) {
+  let m = $("scan-modal");
+  if (!m) {
+    m = document.createElement("div");
+    m.id = "scan-modal";
+    m.innerHTML =
+      `<div class="scan-modal-backdrop"></div>
+       <div class="scan-modal-card">
+         <div class="scan-modal-header">
+           <span id="scan-modal-title" class="scan-modal-title"></span>
+           <button id="scan-modal-close" class="ghost small">✕</button>
+         </div>
+         <pre id="scan-modal-body" class="scan-modal-body"></pre>
+       </div>`;
+    document.body.appendChild(m);
+    m.querySelector(".scan-modal-backdrop").addEventListener("click", () => m.classList.add("hidden"));
+    $("scan-modal-close").addEventListener("click", () => m.classList.add("hidden"));
+  }
+  $("scan-modal-title").textContent = title;
+  $("scan-modal-body").textContent  = content;
+  m.classList.remove("hidden");
+}
+
 function renderScanSummary(results) {
-  const online   = results.filter(r => r.status === "online").length;
+  const online    = results.filter(r => r.status === "online").length;
   const withPorts = results.filter(r => r.openPorts && r.openPorts.length).length;
   $("scan-summary").innerHTML =
     `<div class="scan-stat"><span>Total</span><span class="scan-stat-val">${results.length}</span></div>` +
@@ -953,15 +1079,6 @@ function renderScanSummary(results) {
     `<div class="scan-stat"><span>Open ports</span><span class="scan-stat-val">${withPorts}</span></div>`;
   $("scan-summary").classList.remove("hidden");
   $("scan-wol-row").classList.remove("hidden");
-}
-
-function scanSSH(ip)    { $("f-host").value = ip; $("seg-ssh").click(); }
-function scanTelnet(ip) { $("f-host").value = ip; $("seg-telnet").click(); }
-function scanWoL(mac)   { $("scan-wol-mac").value = mac; }
-async function scanTrace(ip) {
-  sysMsg("Traceroute to " + ip + "…");
-  const r = await window.ahuva.scannerTraceroute(ip);
-  sysMsg(r.output || "No output");
 }
 
 /* ================= Packet analysis ================= */
