@@ -300,4 +300,6 @@ Older switches (Catalyst 2960, etc.) use legacy KEX algorithms. The app already 
 
 ## License
 
-UNLICENSED — Proprietary software of Ahuva Electronic Technologies Pvt. Ltd.
+MIT License — Copyright (c) 2026 Enosh Varma
+
+See [LICENSE](LICENSE) for full details.

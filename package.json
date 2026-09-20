@@ -5,7 +5,7 @@
   "description": "AI-guided network configuration copilot for field engineers — Ahuva Electronic Technologies Pvt. Ltd.",
   "main": "main.js",
   "author": "Ahuva Electronic Technologies Pvt. Ltd.",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "scripts": {
     "start": "electron .",
     "dev": "electron . --dev",
