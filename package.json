@@ -1,0 +1,56 @@
+{
+  "name": "ahuva-it-support-assistant",
+  "productName": "Ahuva IT Support Assistant",
+  "version": "1.5.0",
+  "description": "AI-guided network configuration copilot for field engineers — Ahuva Electronic Technologies Pvt. Ltd.",
+  "main": "main.js",
+  "author": "Ahuva Electronic Technologies Pvt. Ltd.",
+  "license": "UNLICENSED",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "build:win": "electron-builder --win",
+    "build:mac": "electron-builder --mac",
+    "build:linux": "electron-builder --linux",
+    "test": "node scripts/test-units.js",
+    "lint": "eslint src/ main.js preload.js --ext .js"
+  },
+  "dependencies": {
+    "@xterm/addon-fit": "^0.10.0",
+    "@xterm/xterm": "^5.5.0",
+    "serialport": "^12.0.0",
+    "ssh2": "^1.16.0"
+  },
+  "devDependencies": {
+    "electron": "^31.0.0",
+    "electron-builder": "^24.0.0",
+    "eslint": "^8.0.0"
+  },
+  "build": {
+    "appId": "com.ahuva.it-support-assistant",
+    "productName": "Ahuva IT Support Assistant",
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "assets/icon.icns"
+    },
+    "linux": {
+      "target": "AppImage",
+      "icon": "assets/icon.png"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer/**",
+      "src/**",
+      "kb/**",
+      "!node_modules/**"
+    ],
+    "extraResources": [
+      { "from": "kb", "to": "kb" }
+    ]
+  }
+}

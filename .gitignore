@@ -1,0 +1,73 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build outputs
+dist/
+out/
+build/
+*.exe
+*.dmg
+*.AppImage
+*.deb
+*.rpm
+*.snap
+*.msi
+*.nsis
+
+# Electron-builder cache
+.cache/
+
+# Environment & secrets — NEVER commit
+.env
+.env.local
+.env.*.local
+*.env
+config.local.json
+
+# Packet captures — can contain sensitive traffic
+*.pcap
+*.pcapng
+*.cap
+captures/
+
+# Application user data (logs, backups, settings with API keys)
+userData/
+userdata/
+backups/
+research/
+docs/
+logs/
+*.log
+error-report.md
+errors.json
+settings.json
+
+# OS artifacts
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# Editor artifacts
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+*~
+.eslintcache
+
+# Test artifacts
+coverage/
+.nyc_output/
+
+# Temp files
+tmp/
+temp/
+*.tmp
+*.temp

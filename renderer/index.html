@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;" />
+  <title>Ahuva IT Support Assistant</title>
+  <link rel="stylesheet" href="../node_modules/@xterm/xterm/css/xterm.css" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header id="topbar">
+    <div class="brand">
+      <span class="brand-mark">AHUVA</span>
+      <span class="brand-sub">IT Support Assistant</span>
+    </div>
+    <div class="top-status">
+      <span id="conn-led" class="led led-off"></span>
+      <span id="conn-label">Not connected</span>
+      <span id="mode-badge" class="mode-badge hidden">—</span>
+    </div>
+    <div class="top-actions">
+      <button id="btn-research" class="ghost" title="Weekly internet research">Research</button>
+      <button id="btn-guide" class="ghost" title="On-site procedure">Field guide</button>
+      <button id="btn-settings" class="ghost" title="AI provider settings">AI settings</button>
+    </div>
+  </header>
+
+  <main id="layout">
+    <!-- LEFT: session setup -->
+    <section id="panel-session">
+      <h2 class="panel-title">Session</h2>
+
+      <div class="field">
+        <label>Connection</label>
+        <div class="seg">
+          <button id="seg-ssh" class="seg-btn active">SSH</button>
+          <button id="seg-telnet" class="seg-btn">Telnet</button>
+          <button id="seg-serial" class="seg-btn">Serial</button>
+        </div>
+      </div>
+
+      <div id="ssh-fields">
+        <div class="field"><label>Switch IP address</label><input id="f-host" placeholder="192.168.30.2" /></div>
+        <div class="field"><label>SSH port</label><input id="f-port" value="22" /></div>
+        <div class="field"><label>Username</label><input id="f-user" placeholder="manager" /></div>
+        <div class="field"><label>Password</label><input id="f-pass" type="password" /></div>
+      </div>
+
+      <div id="serial-fields" class="hidden">
+        <div class="field">
+          <label>COM port</label>
+          <div class="row">
+            <select id="f-com"></select>
+            <button id="btn-refresh-com" class="ghost small" title="Rescan ports">↻</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>Baud rate</label>
+          <select id="f-baud">
+            <option>9600</option><option>19200</option><option>38400</option>
+            <option>57600</option><option>115200</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field"><label>Device type</label>
+        <select id="f-devtype">
+          <option value="auto">Auto-detect (recommended)</option>
+          <option>Switch</option>
+          <option>Router</option>
+          <option>Firewall</option>
+          <option>Access Point</option>
+          <option>Other</option>
+        </select>
+      </div>
+      <div class="field"><label>Brand / vendor</label>
+        <select id="f-brand">
+          <option>Auto-detect</option>
+          <option>Allied Telesis</option>
+          <option>Cisco</option>
+          <option>Cisco ASA</option>
+          <option>Fortinet</option>
+          <option>Palo Alto</option>
+          <option>MikroTik</option>
+          <option>Juniper</option>
+          <option>Quantum</option>
+          <option>HPE/Aruba</option>
+          <option>Other</option>
+        </select>
+      </div>
+      <div class="field"><label>Model <span class="muted">(auto-filled on detect)</span></label><input id="f-model" placeholder="auto-detected, or type it" /></div>
+      <div class="field"><label>Today's task</label>
+        <textarea id="f-task" rows="3" placeholder="e.g. Move ports 1-12 to VLAN 50 (CCTV) and verify cameras get link"></textarea>
+      </div>
+
+      <button id="btn-connect" class="primary wide">Connect</button>
+      <button id="btn-disconnect" class="danger wide hidden">Disconnect</button>
+
+      <div class="divider"></div>
+      <h2 class="panel-title">Knowledge base</h2>
+      <p id="kb-summary" class="muted">Loading…</p>
+      <button id="btn-kb-import" class="ghost wide">Import reference docs (.md / .txt)</button>
+    </section>
+
+    <!-- CENTER: live terminal -->
+    <section id="panel-terminal">
+      <div class="term-toolbar">
+        <span class="term-title">Live console</span>
+        <div class="term-actions">
+          <button id="btn-backup" class="ghost small" disabled>Backup running-config</button>
+          <button id="btn-restore" class="ghost small" disabled title="Re-apply the configuration saved at session start">Restore last config</button>
+          <button id="btn-clear-term" class="ghost small">Clear</button>
+        </div>
+      </div>
+      <div id="terminal"></div>
+      <div class="term-hint">Type directly into the console for logins and passwords. Approved copilot commands also run here.</div>
+    </section>
+
+    <!-- RIGHT: copilot -->
+    <section id="panel-copilot">
+      <div class="side-tabs">
+        <button id="tab-copilot" class="side-tab active">Copilot</button>
+        <button id="tab-packets" class="side-tab">Packet analysis</button>
+      </div>
+      <div class="side-body">
+        <div id="pane-copilot" class="side-pane">
+          <div class="copilot-head">
+            <span class="muted small-text">AI assistant</span>
+            <span id="ai-provider-label" class="muted small-text"></span>
+          </div>
+          <div id="chat"></div>
+          <div class="chat-input-row">
+            <textarea id="chat-input" rows="2" placeholder="Describe what you need… e.g. 'Client wants port 5 on the CCTV VLAN'"></textarea>
+            <button id="btn-send" class="primary">Send</button>
+          </div>
+        </div>
+
+        <div id="pane-packets" class="side-pane hidden">
+          <div class="pkt-status">
+            <div class="pkt-row">
+              <span class="muted">Wireshark / tshark</span>
+              <span id="pkt-tshark" class="pill pill-no">checking…</span>
+            </div>
+            <div class="pkt-row">
+              <span class="muted">Capture interface</span>
+              <select id="pkt-iface" style="width:auto;max-width:190px"><option>—</option></select>
+            </div>
+            <div class="pkt-row">
+              <span class="muted">Filter (BPF, optional)</span>
+              <input id="pkt-filter" placeholder="host 192.168.50.10" style="width:auto;max-width:190px" />
+            </div>
+            <div class="pkt-row">
+              <span class="muted">Duration</span>
+              <select id="pkt-secs" style="width:auto;max-width:110px">
+                <option value="10">10 seconds</option>
+                <option value="20" selected>20 seconds</option>
+                <option value="45">45 seconds</option>
+              </select>
+            </div>
+          </div>
+          <div class="row" style="margin-bottom:10px">
+            <button id="pkt-capture" class="primary" style="flex:1">Capture &amp; analyse</button>
+            <button id="pkt-device" class="ghost" title="Use the device's own built-in packet sniffer">On-device capture</button>
+          </div>
+          <div id="pkt-output">No capture yet.
+
+Local capture needs Wireshark installed on this laptop (it uses tshark, Wireshark's own engine). On a switched network the laptop usually can't see other devices' traffic — use "On-device capture" to run the switch/firewall's built-in sniffer instead, or set up a SPAN/mirror port.</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer id="statusbar">
+    <div class="sb-item"><span class="sb-label">DEVICE</span><span class="sb-val" id="sb-device">—</span></div>
+    <div class="sb-item"><span class="sb-label">MODE</span><span class="sb-val" id="sb-mode">—</span></div>
+    <div class="sb-item"><span class="sb-label">SESSION</span><span class="sb-val" id="sb-uptime">—</span></div>
+    <div class="sb-item"><span class="sb-label">CMDS</span><span class="sb-val" id="sb-cmds">0</span></div>
+    <div class="sb-item"><span class="sb-label">ERRORS</span><span class="sb-val" id="sb-errors">0</span></div>
+    <div class="sb-spacer"></div>
+    <div class="sb-item"><span class="sb-label">AI</span><span class="sb-val" id="sb-ai">—</span></div>
+    <div class="sb-item"><span class="sb-label">v</span><span class="sb-val" id="sb-version">1.4.0</span></div>
+  </footer>
+
+  <!-- Session consent + auto-backup modal -->
+  <div id="modal-consent" class="modal hidden">
+    <div class="modal-card">
+      <h3>Start work session</h3>
+      <p class="muted">Before any change is made, the assistant will save the current device configuration as a restore point. You approve this once — after that, standard commands run smoothly for the rest of the session. Destructive commands (erase/format/factory-reset) will still ask each time, and you can hit <b>Restore last config</b> anytime to roll back.</p>
+      <div id="consent-detect" class="muted"></div>
+      <div class="modal-actions">
+        <span class="spacer"></span>
+        <button id="consent-cancel" class="ghost">Not now</button>
+        <button id="consent-ok" class="primary">Back up &amp; start session</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Telnet / Device Login Modal -->
+  <div id="modal-login" class="modal hidden">
+    <div class="modal-card login-card">
+      <div class="login-header">
+        <div class="login-icon">🔐</div>
+        <div>
+          <h3>Device login required</h3>
+          <p class="muted" id="login-device-label">Authenticating to device…</p>
+        </div>
+      </div>
+      <div class="login-banner">
+        <span class="login-banner-icon">⚠</span>
+        <span id="login-banner-text">This device is requesting credentials. Enter them below — they are sent directly to the device terminal and never stored.</span>
+      </div>
+      <div class="field">
+        <label>Username</label>
+        <div class="input-with-icon">
+          <span class="input-icon">👤</span>
+          <input id="login-user" placeholder="manager / admin / root" autocomplete="off" />
+        </div>
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <div class="input-with-icon">
+          <span class="input-icon">🔑</span>
+          <input id="login-pass" type="password" placeholder="Enter password" autocomplete="off" />
+        </div>
+      </div>
+      <div class="login-security-note">
+        <span class="dot-ok"></span>
+        Credentials are typed directly into the device terminal — never stored or sent to the cloud.
+      </div>
+      <div class="modal-actions">
+        <button id="login-cancel" class="ghost">Cancel</button>
+        <span class="spacer"></span>
+        <button id="login-submit" class="primary login-btn">Login to device ▸</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Research Center drawer -->
+  <div id="drawer-research" class="drawer hidden">
+    <div class="drawer-head">
+      <h3>Research Center</h3>
+      <button id="research-close" class="ghost small">✕</button>
+    </div>
+    <div class="drawer-body">
+      <div class="research-status">
+        <div class="research-status-row">
+          <span class="muted">Weekly auto-research</span>
+          <label class="switch"><input type="checkbox" id="research-enabled" /><span class="switch-track"></span></label>
+        </div>
+        <div class="research-status-row">
+          <span class="muted">Last run</span>
+          <span id="research-last">never</span>
+        </div>
+        <div class="research-status-row">
+          <span class="muted">Status</span>
+          <span id="research-due-badge" class="due-badge">—</span>
+        </div>
+      </div>
+
+      <button id="research-run" class="primary wide">Research now</button>
+      <div id="research-progress" class="research-progress hidden">
+        <div class="research-spinner"></div>
+        <span id="research-progress-text">Researching…</span>
+      </div>
+
+      <div class="research-note muted">
+        Fetches trusted networking sources and (with Anthropic) searches the web, then documents new configs into your knowledge base as <b>review material</b>. Nothing is auto-run — every command still needs your approval on site.
+      </div>
+
+      <h4>Trusted sources</h4>
+      <div id="research-sources"></div>
+      <div class="row" style="margin-top:8px">
+        <input id="research-new-url" placeholder="https://vendor-docs-url…" />
+        <button id="research-add-src" class="ghost small">Add</button>
+      </div>
+
+      <h4>Saved digests</h4>
+      <div id="research-files" class="research-files"><span class="muted">No digests yet.</span></div>
+      <button id="research-open-folder" class="ghost wide" style="margin-top:10px">Open research folder</button>
+    </div>
+  </div>
+
+  <!-- Digest viewer -->
+  <div id="modal-digest" class="modal hidden">
+    <div class="modal-card" style="width:640px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <h3 id="digest-title">Research digest</h3>
+        <button id="digest-close" class="ghost small">✕</button>
+      </div>
+      <pre id="digest-content" class="digest-content"></pre>
+    </div>
+  </div>
+
+  <!-- Settings modal -->
+  <div id="modal-settings" class="modal hidden">
+    <div class="modal-card">
+      <h3>AI provider</h3>
+      <p class="muted">Switch provider, model, key or endpoint any time — takes effect on the next message.</p>
+      <div class="field"><label>Provider</label>
+        <select id="s-provider">
+          <option value="anthropic">Anthropic (Claude)</option>
+          <option value="openai">OpenAI</option>
+          <option value="openai-compatible">OpenAI-compatible (OpenRouter / Groq / custom)</option>
+          <option value="ollama">Ollama (local, offline)</option>
+        </select>
+      </div>
+      <div class="field"><label>Model <span class="muted">(pick a preset or type an ID)</span></label>
+        <input id="s-model" list="model-presets" placeholder="claude-sonnet-4-6" />
+        <datalist id="model-presets"></datalist>
+      </div>
+      <div class="field"><label>Available presets — cost guide</label>
+        <div id="model-hint" class="pkt-status" style="margin:0"></div>
+      </div>
+      <div class="field" id="s-key-field"><label>API key</label><input id="s-key" type="password" /></div>
+      <div class="field" id="s-base-field"><label>Base URL <span class="muted">(optional for Anthropic/OpenAI; required for compatible endpoints)</span></label>
+        <input id="s-base" placeholder="https://openrouter.ai/api/v1  or  http://localhost:11434" />
+      </div>
+      <div class="divider"></div>
+      <div class="field check-row">
+        <label><input type="checkbox" id="s-autopilot" checked /> Auto-pilot — run safe commands automatically after a 5s cancel window (disruptive/destructive still need approval)</label>
+      </div>
+      <div class="field"><label>Engineer name <span class="muted">(shown on the team dashboard)</span></label><input id="s-engineer" placeholder="Enosh Varma" /></div>
+      <div class="field"><label>Team dashboard URL <span class="muted">(optional — leave empty to disable usage reporting)</span></label><input id="s-dash" placeholder="http://192.168.1.50:8877" /></div>
+      <div class="field"><label>Team token</label><input id="s-token" type="password" /></div>
+      <div id="s-test-result" class="muted"></div>
+      <div class="modal-actions">
+        <button id="s-test" class="ghost">Test connection</button>
+        <span class="spacer"></span>
+        <button id="s-cancel" class="ghost">Cancel</button>
+        <button id="s-save" class="primary">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Command confirmation modal -->
+  <div id="modal-confirm" class="modal hidden">
+    <div class="modal-card">
+      <h3 id="confirm-title">Confirm command</h3>
+      <p id="confirm-reason" class="warn-text"></p>
+      <pre id="confirm-cmd" class="cmd-preview"></pre>
+      <div id="confirm-type-row" class="field hidden">
+        <label>This is a destructive command. Type <b>YES</b> to run it.</label>
+        <input id="confirm-type" placeholder="YES" />
+      </div>
+      <div class="modal-actions">
+        <span class="spacer"></span>
+        <button id="confirm-cancel" class="ghost">Cancel</button>
+        <button id="confirm-run" class="danger">Run command</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Field guide drawer -->
+  <div id="drawer-guide" class="drawer hidden">
+    <div class="drawer-head">
+      <h3>On-site procedure</h3>
+      <button id="guide-close" class="ghost small">✕</button>
+    </div>
+    <div class="drawer-body">
+      <h4>Before touching a production switch</h4>
+      <ol>
+        <li>Confirm scope with the client in writing — which ports, VLANs, switches.</li>
+        <li>Backup first: run <code>show running-config</code>, then use <b>Backup running-config</b> above the console.</li>
+        <li>Record model / firmware / serial (<code>show version</code>).</li>
+        <li>Capture current state: <code>show vlan brief</code>, <code>show interface status</code>.</li>
+        <li>Disruptive work (reload, uplinks, STP, mgmt IP) → agree a maintenance window first.</li>
+      </ol>
+      <h4>During changes</h4>
+      <ol>
+        <li>One small change at a time; verify with a <code>show</code> command after each block.</li>
+        <li>Never change the management IP over SSH without console fallback.</li>
+        <li>Keep a change log — the console output here is your record.</li>
+      </ol>
+      <h4>After changes</h4>
+      <ol>
+        <li>Verify end-to-end (ping gateway, MAC table, client DHCP).</li>
+        <li>Save config: <code>copy running-config startup-config</code>.</li>
+        <li>Fresh backup + update the handover document.</li>
+        <li>Client sign-off.</li>
+      </ol>
+      <h4>If something breaks</h4>
+      <p>Can't fix in 15 minutes → roll back to the backup, restore service first, diagnose after. Inform the project lead.</p>
+    </div>
+  </div>
+
+  <script src="../node_modules/@xterm/xterm/lib/xterm.js"></script>
+  <script src="../node_modules/@xterm/addon-fit/lib/addon-fit.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
