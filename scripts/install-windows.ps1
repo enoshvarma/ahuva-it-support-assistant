@@ -170,12 +170,29 @@ if ($tshark) {
 # -- 6. Shortcuts -------------------------------------------------------------
 Write-Step "6/6" "Creating shortcuts..."
 
+# Find the electron binary directly so the launcher does NOT need npm in PATH
+$electronExe = "$InstallDir\node_modules\electron\dist\electron.exe"
+if (-not (Test-Path $electronExe)) {
+    # Fallback: locate via node_modules/.bin
+    $electronExe = (Get-Command "$InstallDir\node_modules\.bin\electron.cmd" -ErrorAction SilentlyContinue)?.Source
+}
+
+# Launcher batch — runs electron directly, visible window so errors are readable.
+# Falls back to `npm start` if electron.exe path was not found.
 $batPath = "$InstallDir\launch.bat"
+if ($electronExe -and (Test-Path $electronExe)) {
+    $batContent = "@echo off`r`ncd /d `"$InstallDir`"`r`n`"$electronExe`" . --disable-gpu-sandbox --no-sandbox`r`nif errorlevel 1 pause"
+} else {
+    $batContent = "@echo off`r`ncd /d `"$InstallDir`"`r`ncall npm start`r`nif errorlevel 1 pause"
+}
+Set-Content -Path $batPath -Value $batContent -Encoding ASCII
+
+# VBS wrapper: opens the bat invisibly.
+# But if electron fails, the bat will pause (console stays open) so user can read the error.
 $vbsPath = "$InstallDir\launch.vbs"
-Set-Content -Path $batPath -Value "@echo off`r`ncd /d `"$InstallDir`"`r`nnpm start" -Encoding ASCII
 Set-Content -Path $vbsPath -Encoding ASCII -Value @"
 Set ws = CreateObject("WScript.Shell")
-ws.Run Chr(34) & "$batPath" & Chr(34), 0, False
+ws.Run Chr(34) & "$batPath" & Chr(34), 7, False
 "@
 
 $wsh = New-Object -ComObject WScript.Shell

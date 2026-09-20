@@ -1,7 +1,11 @@
 // Electron main process — IPC bridge between renderer and Node.js backend.
 // All device I/O, AI calls, file operations, and settings live here.
 
+// Prevent GPU cache "Access is denied" errors on locked-down corporate machines.
+// Must be called before app is ready.
 const { app, BrowserWindow, ipcMain, dialog, shell } = require("electron");
+app.commandLine.appendSwitch("disable-gpu-sandbox");
+app.commandLine.appendSwitch("no-sandbox");
 const path = require("path");
 const fs   = require("fs");
 const os   = require("os");
