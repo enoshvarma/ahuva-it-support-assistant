@@ -101,48 +101,89 @@ Alternatively, install the Wireshark `.dmg` from https://www.wireshark.org/ — 
 
 ## Installation
 
-### Pre-built Installer (Recommended for Field Engineers)
-Download the latest release installer from the releases page:
-- **Windows:** `Ahuva-IT-Support-Assistant-Setup-x.x.x.exe`
-- **macOS:** `Ahuva-IT-Support-Assistant-x.x.x.dmg`
-- **Linux:** `Ahuva-IT-Support-Assistant-x.x.x.AppImage`
+Pick your OS below — one command installs everything (Node.js, Git, the app, and a desktop shortcut). Re-running the same command later pulls the latest update.
 
-Run the installer and follow the prompts.
+---
 
-### Build from Source
+### 🪟 Windows
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/enoshvarma/ahuva-it-support-assistant.git
-   cd ahuva-it-support-assistant
-   ```
+Open **PowerShell** (no admin needed) and run:
 
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
+```powershell
+powershell -ExecutionPolicy Bypass -Command "iwr -useb 'https://raw.githubusercontent.com/enoshvarma/ahuva-it-support-assistant/main/scripts/install-windows.ps1' | iex"
+```
 
-3. **Run in development mode**
-   ```bash
-   npm start
-   ```
+**What it does:**
+- Installs **Git** via winget if missing
+- Installs **Node.js 20 LTS** via winget if missing or outdated
+- Clones the app to `%LOCALAPPDATA%\AhuvaITAssistant`
+- Creates a **Desktop shortcut** and **Start Menu entry**
+- Prompts to install Wireshark (needed for local packet capture)
 
-4. **Build a distributable**
-   ```bash
-   # Windows
-   npm run build:win
+> **Packet capture note:** Install [Wireshark](https://www.wireshark.org/download.html) and tick *"Install Npcap"* + *"Install tshark"* during setup.
 
-   # macOS
-   npm run build:mac
+---
 
-   # Linux
-   npm run build:linux
-   ```
+### 🍎 macOS
 
-5. **Run unit tests**
-   ```bash
-   npm test
-   ```
+Open **Terminal** and run:
+
+```bash
+curl -fsSL "https://raw.githubusercontent.com/enoshvarma/ahuva-it-support-assistant/main/scripts/install-mac.sh" | bash
+```
+
+**What it does:**
+- Installs **Homebrew** if missing
+- Installs **Git** and **Node.js 20 LTS** via Homebrew if missing/outdated
+- Clones the app to `~/Applications/AhuvaITAssistant`
+- Creates a **Desktop launcher** (double-click to open)
+- Supports both Intel and Apple Silicon
+
+> **Packet capture note:** `brew install --cask wireshark` then `sudo chmod o+r /dev/bpf*`
+>
+> **Gatekeeper tip:** First time — right-click the launcher → Open → Open.
+
+---
+
+### 🐧 Linux
+
+Open a **terminal** and run:
+
+```bash
+curl -fsSL "https://raw.githubusercontent.com/enoshvarma/ahuva-it-support-assistant/main/scripts/install-linux.sh" | bash
+```
+
+**What it does:**
+- Detects your distro (Ubuntu/Debian, Fedora/RHEL, Arch/Manjaro, openSUSE, Alpine)
+- Installs **Git** and **Node.js 20 LTS** via the system package manager if missing
+- Clones the app to `~/.local/share/ahuva-it-assistant`
+- Creates an `ahuva` command in `~/.local/bin` and an **application menu entry**
+
+> **Packet capture note (Ubuntu/Debian):**
+> ```bash
+> sudo apt install -y tshark
+> sudo usermod -aG wireshark $USER
+> newgrp wireshark
+> ```
+>
+> **Fedora/RHEL:** `sudo dnf install wireshark-cli && sudo usermod -aG wireshark $USER`
+>
+> **Arch:** `sudo pacman -S wireshark-cli && sudo usermod -aG wireshark $USER`
+
+---
+
+### Manual / Developer Install
+
+```bash
+git clone https://github.com/enoshvarma/ahuva-it-support-assistant.git
+cd ahuva-it-support-assistant
+npm install
+npm start          # run in dev mode
+npm test           # run unit + integration tests
+npm run build:win  # build Windows NSIS installer
+npm run build:mac  # build macOS DMG
+npm run build:linux # build Linux AppImage
+```
 
 ---
 

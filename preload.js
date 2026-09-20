@@ -67,6 +67,11 @@ contextBridge.exposeInMainWorld("ahuva", {
   onSessionError:  cb => ipcRenderer.on("session:error",  (_e, m) => cb(m)),
   onResearchDue:   cb => ipcRenderer.on("research:due",   ()      => cb()),
 
+  // Switch baseline config generator
+  swcfgVendors:  ()       => ipcRenderer.invoke("swcfg:vendors"),
+  swcfgGenerate: params   => ipcRenderer.invoke("swcfg:generate", params),
+  swcfgPush:     cmds     => ipcRenderer.invoke("swcfg:push", { commands: cmds }),
+
   // Auto-updater
   checkUpdate:       ()   => ipcRenderer.invoke("update:check"),
   onUpdateAvailable: cb   => ipcRenderer.on("update:available", (_e, info) => cb(info)),

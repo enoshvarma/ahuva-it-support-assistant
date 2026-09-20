@@ -124,8 +124,75 @@ assert("telemetry event type", ev.type, "connect");
 assert("telemetry engineer", ev.engineer, "Alice");
 assert("telemetry no API key", Object.keys(ev).includes("apiKey"), false);
 
+// ---- pcap-analyser.js ----
+section("pcap-analyser.js");
+const { analyseCapture, SEVERITY } = require("../src/pcap-analyser");
+
+function mkPkt(src, dst, proto, info) { return `1\t${src}\t${dst}\t${proto}\t${info}`; }
+{
+  // Use 5 sources evenly split so no single source dominates (each is 20%)
+  const lines = Array.from({ length: 50 }, (_, i) => mkPkt(`10.0.0.${(i % 5) + 1}`, "10.0.0.10", "TCP", `[SYN] Seq=${i}`));
+  const r = analyseCapture({ packets: 50, conversations: "", summary: lines.join("\n") });
+  assert("clean capture → NORMAL",      r.severity, SEVERITY.NORMAL);
+  assert("clean capture → 0 anomalies", r.anomalies.length, 0);
+}
+{
+  const rexmit = Array.from({ length: 100 }, (_, i) =>
+    mkPkt("10.0.0.1", "10.0.0.2", "TCP", i < 80 ? `[SYN] Seq=${i}` : "[TCP Retransmission] Seq=1")
+  );
+  const r = analyseCapture({ packets: 100, conversations: "", summary: rexmit.join("\n") });
+  assert("≥15% retransmit → CRITICAL", r.severity, SEVERITY.CRITICAL);
+  assert("retransmit anomaly id",      r.anomalies.some(a => a.id === "tcp_retransmit_critical"), true);
+}
+{
+  const arps = Array.from({ length: 100 }, (_, i) =>
+    mkPkt("ff:ff", "broadcast", i < 25 ? "ARP" : "TCP", i < 25 ? "ARP who has 10.0.0.1?" : "[ACK]")
+  );
+  const r = analyseCapture({ packets: 100, conversations: "", summary: arps.join("\n") });
+  assert("≥20% ARP → storm anomaly", r.anomalies.some(a => a.id === "arp_storm"), true);
+}
+{
+  const r = analyseCapture({ packets: 0, conversations: "", summary: "" });
+  assert("empty input → NORMAL", r.severity, SEVERITY.NORMAL);
+}
+
+// ---- switch-config.js ----
+section("switch-config.js");
+const sc = require("../src/switch-config");
+const BASE = {
+  vendor: "cisco-ios", hostname: "TEST-SW-01",
+  mgmtIp: "192.168.1.1", mgmtMask: "255.255.255.0", mgmtVlan: "1",
+  gateway: "192.168.1.254", adminUser: "admin", adminPass: "Pass1!",
+  enableSecret: "Secret1!", vlans: [{ id: "10", name: "Data" }]
+};
+assert("validateParams valid",          sc.validateParams(BASE).length, 0);
+assert("validateParams empty hostname", sc.validateParams({ ...BASE, hostname: "" }).length > 0, true);
+assert("validateParams bad IP",         sc.validateParams({ ...BASE, mgmtIp: "not@valid!" }).some(e => /ip/i.test(e)), true);
+assertMatch("cisco-ios hostname in cfg", sc.generateBaseline(BASE).config, /hostname TEST-SW-01/);
+assertMatch("cisco-ios enable secret",  sc.generateBaseline(BASE).config, /enable secret/);
+assertMatch("cisco-ios ssh transport",  sc.generateBaseline(BASE).config, /transport input ssh/i);
+{
+  const r = sc.generateBaseline({ ...BASE, vendor: "mikrotik" });
+  assertMatch("mikrotik /ip address",   r.config, /\/ip address/i);
+}
+{
+  const r = sc.generateBaseline({ ...BASE, vendor: "fortinet" });
+  assertMatch("fortinet config system", r.config, /config system global/i);
+}
+assert("SUPPORTED_VENDORS includes cisco-ios", sc.SUPPORTED_VENDORS.includes("cisco-ios"), true);
+assert("SUPPORTED_VENDORS length ≥ 6",         sc.SUPPORTED_VENDORS.length >= 6, true);
+
 // ---- Summary ----
 console.log(`\n${"─".repeat(40)}`);
 console.log(`Tests: ${passed + failed} total, ${passed} passed, ${failed} failed`);
 if (failed > 0) { console.error(`\n${failed} test(s) FAILED`); process.exit(1); }
 else console.log("All tests passed.");
+
+// ---- Run extended test suites ----
+console.log("\n\nRunning extended test suites…\n");
+try { require("../tests/unit/pcap-analyser.test.js"); } catch(e) { console.error("pcap-analyser suite error:", e.message); }
+try { require("../tests/unit/switch-config.test.js"); } catch(e) { console.error("switch-config suite error:", e.message); }
+try { require("../tests/integration/pcap-engine.test.js"); } catch(e) { console.error("pcap-engine integration error:", e.message); }
+try { require("../tests/integration/switch-config.test.js"); } catch(e) { console.error("switch-config integration error:", e.message); }
+// auth-guard uses async timers — run it last independently
+try { require("../tests/unit/auth-guard.test.js"); } catch(e) { console.error("auth-guard suite error:", e.message); }

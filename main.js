@@ -23,6 +23,8 @@ const models                             = require("./src/models");
 const research                           = require("./src/research");
 const { sanitiseCommand }                = require("./src/validate");
 const { checkForUpdate }                 = require("./src/updater");
+const { analyseCapture }                 = require("./src/pcap-analyser");
+const switchConfig                       = require("./src/switch-config");
 const pkg                                = require("./package.json");
 
 let win = null;
@@ -249,21 +251,43 @@ ipcMain.handle("pkt:ifaces",     ()                       => packets.listInterfa
 ipcMain.handle("pkt:deviceCmds", (_e, { brand, target }) => packets.deviceCaptureCommands(brand, target));
 
 ipcMain.handle("pkt:capture", async (_e, opts) => {
-  const res = await packets.capture({ ...opts, outDir: capturesDir() });
+  const res      = await packets.capture({ ...opts, outDir: capturesDir() });
   const settings = loadSettings();
-  let analysis = "";
+
+  // Deterministic analysis runs first (no AI needed, always available)
+  const structured = analyseCapture(res);
+
+  let aiAnalysis = "";
   try {
     const r = await callAI(settings, packets.ANALYSIS_SYSTEM, [{
       role: "user",
-      content: `IP conversations:\n${res.conversations}\n\nPacket list (frame, src, dst, proto, info):\n${res.summary}`
+      content: `Deterministic pre-analysis:\n${structured.humanSummary}\n\n` +
+               `IP conversations:\n${res.conversations}\n\n` +
+               `Packet list (frame, src, dst, proto, info):\n${res.summary}`
     }]);
-    analysis = r.reply || "";
+    aiAnalysis = r.reply || "";
   } catch (e) {
-    analysis = "(AI analysis unavailable: " + e.message + ")";
+    aiAnalysis = "(AI analysis unavailable: " + e.message + ")";
     log.warn("Capture AI analysis failed", { message: e.message });
   }
   sendEvent("packet_capture", { appVersion: app.getVersion() }, settings);
-  return { ...res, analysis };
+  return { ...res, analysis: aiAnalysis, structured };
+});
+
+// ---------- Switch configuration ----------
+ipcMain.handle("swcfg:vendors",  ()           => switchConfig.SUPPORTED_VENDORS);
+ipcMain.handle("swcfg:generate", (_e, params) => switchConfig.generateBaseline(params));
+ipcMain.handle("swcfg:push",     async (_e, { commands }) => {
+  if (!session.connected) throw new Error("Not connected to a device.");
+  const safe = (commands || []).map(c => {
+    try { return sanitiseCommand(c); }
+    catch { return null; }
+  }).filter(Boolean);
+  for (const cmd of safe) {
+    session.sendCommand(cmd);
+    await new Promise(r => setTimeout(r, 250));
+  }
+  return { pushed: safe.length };
 });
 
 ipcMain.handle("pkt:export", (_e, { captureResult, format }) =>

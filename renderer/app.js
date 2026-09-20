@@ -18,7 +18,10 @@ const state = {
   probingAborted: false,
   sessionErrors: [],
   _lastCmdMark: 0,
-  cmdCount: 0
+  cmdCount: 0,
+  authCompleted: false,
+  consentShown: false,
+  _pendingConsentTimer: null
 };
 let autoRunAbort = null;   // function to cancel a pending auto-run batch
 const MAX_BUFFER = 200000;
@@ -185,11 +188,22 @@ $("btn-connect").onclick = async () => {
     sessionStart = Date.now();
     setConnected(true);
     sysMsg(`Connected to ${cfg.connType === "serial" ? cfg.comPort : cfg.host} via ${cfg.connType.toUpperCase()}.`);
+    state.authCompleted = false;
+    state.consentShown  = false;
     if (state.history.length === 0) aiIntro();
     // auto-detect device (unless the user picked a specific brand)
     if (cfg.devtype === "auto" || cfg.brand === "Auto-detect") await autoDetectDevice();
-    // then ask for one-time session consent + backup
-    openConsent();
+    // For SSH the connection itself handles auth — show consent immediately.
+    // For Telnet/Serial the device may emit a login prompt; defer consent so the
+    // login modal can fire first.  submitLogin() will call openConsent() on success.
+    if (state.connType === "ssh") {
+      openConsent();
+    } else {
+      state._pendingConsentTimer = setTimeout(() => {
+        state._pendingConsentTimer = null;
+        if (!state.consentShown) openConsent();
+      }, 3500);
+    }
   } catch (e) {
     sysMsg("Connection failed: " + e.message, true);
   } finally {
@@ -201,6 +215,11 @@ $("btn-disconnect").onclick = async () => { await window.ahuva.disconnect(); set
 
 function setConnected(on) {
   state.connected = on;
+  if (!on) {
+    state.authCompleted = false;
+    state.consentShown  = false;
+    if (state._pendingConsentTimer) { clearTimeout(state._pendingConsentTimer); state._pendingConsentTimer = null; }
+  }
   $("btn-restore").disabled = !(on && state.getRestoreReady);
   $("conn-led").className = "led " + (on ? "led-on" : "led-off");
   const dev = state.detected
@@ -505,6 +524,12 @@ async function runCommand(cmd, btn) {
 
 /* ---------------- login credential popup ---------------- */
 function openLoginModal() {
+  // Cancel the deferred consent timer — login takes priority.
+  // openConsent() will be called by submitLogin() after auth succeeds.
+  if (state._pendingConsentTimer) {
+    clearTimeout(state._pendingConsentTimer);
+    state._pendingConsentTimer = null;
+  }
   state.loginModalOpen = true;
   const host = state.session.host || state.session.comPort || "device";
   const proto = (state.connType || "").toUpperCase();
@@ -608,11 +633,12 @@ async function submitLogin() {
 
     // login worked — prompt is live
     closeLoginModal();
+    state.authCompleted = true;
     sysMsg("Logged in. Starting device detection…");
     state.probingAborted = false;
     // now safe to probe
     await autoDetectDevice();
-    openConsent();
+    openConsent();   // safe — guarded by consentShown flag
   } catch (e) {
     showLoginError("Error: " + e.message);
     $("login-submit").disabled = false;
@@ -622,6 +648,8 @@ async function submitLogin() {
 
 /* ---------------- session consent + auto-backup restore point ---------------- */
 function openConsent() {
+  if (state.consentShown) return;   // never show twice per session
+  state.consentShown = true;
   const d = state.detected;
   $("consent-detect").textContent = d
     ? `Device: ${d.vendor} ${d.type}${d.model ? " · " + d.model : ""}`
@@ -779,11 +807,12 @@ $("guide-close").onclick = () => $("drawer-guide").classList.add("hidden");
 /* ================= Side panel tabs ================= */
 $("tab-copilot").onclick = () => switchPane("copilot");
 $("tab-packets").onclick = () => { switchPane("packets"); initPackets(); };
+$("tab-swcfg").onclick   = () => { switchPane("swcfg");   initSwcfg();   };
 function switchPane(which) {
-  $("tab-copilot").classList.toggle("active", which === "copilot");
-  $("tab-packets").classList.toggle("active", which === "packets");
-  $("pane-copilot").classList.toggle("hidden", which !== "copilot");
-  $("pane-packets").classList.toggle("hidden", which !== "packets");
+  ["copilot", "packets", "swcfg"].forEach(p => {
+    $("tab-" + p).classList.toggle("active", p === which);
+    $("pane-" + p).classList.toggle("hidden", p !== which);
+  });
 }
 
 /* ================= Packet analysis ================= */
@@ -816,18 +845,43 @@ $("pkt-capture").onclick = async () => {
   const btn = $("pkt-capture");
   btn.disabled = true; btn.textContent = "Capturing…";
   $("pkt-output").textContent = "Capturing packets…";
+  $("pkt-severity-header").className = "hidden";
+  $("pkt-severity-header").innerHTML = "";
   try {
     const res = await window.ahuva.pktCapture({
       iface, seconds: Number($("pkt-secs").value), filter: $("pkt-filter").value, maxPackets: 500
     });
+    if (res.structured) renderPcapAnalysis(res.structured);
     $("pkt-output").textContent =
-      `${res.packets} packets captured\nSaved: ${res.pcap}\n\n── ANALYSIS ──\n${res.analysis}\n\n── CONVERSATIONS ──\n${res.conversations.slice(0, 2000)}`;
+      `${res.packets} packets captured\nSaved: ${res.pcap}\n\n── AI ANALYSIS ──\n${res.analysis}\n\n── CONVERSATIONS ──\n${res.conversations.slice(0, 2000)}`;
   } catch (e) {
     $("pkt-output").textContent = "Capture failed: " + String(e.message || e).replace(/^Error invoking remote method '[^']+': (Error: )?/, "");
   } finally {
     btn.disabled = false; btn.textContent = "Capture & analyse";
   }
 };
+
+function renderPcapAnalysis(s) {
+  const hdr = $("pkt-severity-header");
+  const sevClass = { normal: "sev-normal", high: "sev-high", critical: "sev-critical" }[s.severity] || "sev-normal";
+  const sevLabel = (s.severity || "normal").toUpperCase();
+  let html = `<span class="pkt-severity-badge ${sevClass}">${sevLabel}</span>`;
+  html += `<span style="font-size:12px;color:var(--text-2);margin-left:9px">${s.trafficProfile.totalPackets} packets analysed</span>`;
+  if (s.anomalies && s.anomalies.length) {
+    html += `<div class="pkt-anomaly-list">`;
+    for (const a of s.anomalies) {
+      const ac = { normal: "sev-normal", high: "sev-high", critical: "sev-critical" }[a.severity] || "sev-high";
+      html += `<div class="pkt-anomaly ${ac}">
+        <div class="pkt-anomaly-title">${a.title}</div>
+        <div class="pkt-anomaly-detail">${a.detail}</div>
+        <div class="pkt-anomaly-rec">${a.recommendation}</div>
+      </div>`;
+    }
+    html += `</div>`;
+  }
+  hdr.innerHTML = html;
+  hdr.classList.remove("hidden");
+}
 
 $("pkt-device").onclick = async () => {
   if (!state.connected) { $("pkt-output").textContent = "Connect to a device first — on-device capture runs through the live session."; return; }
@@ -840,6 +894,88 @@ $("pkt-device").onclick = async () => {
   switchPane("copilot");
   sendChat(`Run an on-device packet capture using this device's built-in sniffer${target ? " for host " + target : ""}, then interpret the output. Suggested approach: ${d.label}. Propose the commands one step at a time and read the results.`);
 };
+
+/* ================= Switch Config Module ================= */
+let swcfgReady = false;
+function initSwcfg() {
+  if (swcfgReady) return;
+  swcfgReady = true;
+
+  $("swcfg-generate").onclick = async () => {
+    const vlansRaw = ($("swcfg-vlans").value || "").trim();
+    const vlans = vlansRaw
+      ? vlansRaw.split("\n").filter(l => l.trim()).map(l => {
+          const [id, ...rest] = l.split(":");
+          return { id: id.trim(), name: rest.join(":").trim() || undefined };
+        })
+      : [];
+
+    const params = {
+      vendor:      $("swcfg-vendor").value,
+      hostname:    $("swcfg-hostname").value.trim(),
+      mgmtIp:      $("swcfg-ip").value.trim(),
+      mgmtMask:    $("swcfg-mask").value.trim(),
+      mgmtVlan:    $("swcfg-mgmt-vlan").value.trim() || "1",
+      gateway:     $("swcfg-gw").value.trim(),
+      ntpServer:   $("swcfg-ntp").value.trim(),
+      adminUser:   $("swcfg-user").value.trim(),
+      adminPass:   $("swcfg-pass").value,
+      enableSecret:$("swcfg-enable").value,
+      vlans
+    };
+
+    const btn = $("swcfg-generate");
+    btn.disabled = true; btn.textContent = "Generating…";
+    $("swcfg-output").classList.add("hidden");
+    $("swcfg-notes").classList.add("hidden");
+    $("swcfg-copy").style.display = "none";
+    $("swcfg-push").disabled = true;
+
+    try {
+      const result = await window.ahuva.swcfgGenerate(params);
+      $("swcfg-output").textContent = result.config;
+      $("swcfg-output").classList.remove("hidden");
+      if (result.notes && result.notes.length) {
+        $("swcfg-notes").innerHTML = "<b>Notes:</b><ul>" + result.notes.map(n => `<li>${n}</li>`).join("") + "</ul>";
+        $("swcfg-notes").classList.remove("hidden");
+      }
+      $("swcfg-copy").style.display = "";
+      if (state.connected) $("swcfg-push").disabled = false;
+    } catch (e) {
+      $("swcfg-output").textContent = "Error: " + (e.message || String(e)).replace(/^Error invoking remote method '[^']+': (Error: )?/, "");
+      $("swcfg-output").classList.remove("hidden");
+    } finally {
+      btn.disabled = false; btn.textContent = "Generate config";
+    }
+  };
+
+  $("swcfg-push").onclick = async () => {
+    const cfg = $("swcfg-output").textContent;
+    if (!cfg || !state.connected) return;
+    const cmds = cfg.split("\n").filter(l => l.trim() && !l.startsWith("!") && !l.startsWith("#"));
+    if (!confirm(`Push ${cmds.length} commands to ${state.session.host || state.session.comPort}?\n\nThis will modify the device. Ensure you have a restore point.`)) return;
+    const btn = $("swcfg-push");
+    btn.disabled = true; btn.textContent = "Pushing…";
+    try {
+      const r = await window.ahuva.swcfgPush(cmds);
+      sysMsg(`Switch config pushed — ${r.pushed} commands sent.`);
+      $("swcfg-notes").innerHTML = `<b>Pushed:</b> ${r.pushed} commands sent to device.`;
+      $("swcfg-notes").classList.remove("hidden");
+    } catch (e) {
+      sysMsg("Push failed: " + (e.message || e), true);
+    } finally {
+      btn.disabled = false; btn.textContent = "Push ▸";
+    }
+  };
+
+  $("swcfg-copy").onclick = () => {
+    const txt = $("swcfg-output").textContent;
+    if (txt) navigator.clipboard.writeText(txt).then(() => {
+      $("swcfg-copy").textContent = "Copied!";
+      setTimeout(() => { $("swcfg-copy").textContent = "Copy"; }, 1800);
+    });
+  };
+}
 
 /* ================= Status bar ================= */
 let sessionStart = null;

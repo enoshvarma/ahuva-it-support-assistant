@@ -133,7 +133,8 @@
     <section id="panel-copilot">
       <div class="side-tabs">
         <button id="tab-copilot" class="side-tab active">Copilot</button>
-        <button id="tab-packets" class="side-tab">Packet analysis</button>
+        <button id="tab-packets" class="side-tab">Packets</button>
+        <button id="tab-swcfg"   class="side-tab">Switch Config</button>
       </div>
       <div class="side-body">
         <div id="pane-copilot" class="side-pane">
@@ -172,11 +173,56 @@
           </div>
           <div class="row" style="margin-bottom:10px">
             <button id="pkt-capture" class="primary" style="flex:1">Capture &amp; analyse</button>
-            <button id="pkt-device" class="ghost" title="Use the device's own built-in packet sniffer">On-device capture</button>
+            <button id="pkt-device" class="ghost" title="Use the device's own built-in packet sniffer">On-device</button>
           </div>
+          <!-- Structured severity header (populated by JS) -->
+          <div id="pkt-severity-header" class="hidden"></div>
           <div id="pkt-output">No capture yet.
 
 Local capture needs Wireshark installed on this laptop (it uses tshark, Wireshark's own engine). On a switched network the laptop usually can't see other devices' traffic — use "On-device capture" to run the switch/firewall's built-in sniffer instead, or set up a SPAN/mirror port.</div>
+        </div>
+        <!-- Switch baseline config pane -->
+        <div id="pane-swcfg" class="side-pane hidden">
+          <div class="swcfg-scroll">
+            <div class="field">
+              <label>Vendor</label>
+              <select id="swcfg-vendor">
+                <option value="cisco-ios">Cisco IOS / IOS-XE</option>
+                <option value="cisco-nxos">Cisco NX-OS</option>
+                <option value="allied-telesis">Allied Telesis (AW+)</option>
+                <option value="mikrotik">MikroTik RouterOS</option>
+                <option value="fortinet">Fortinet FortiGate</option>
+                <option value="juniper">Juniper JunOS</option>
+                <option value="generic">Generic template</option>
+              </select>
+            </div>
+            <div class="row">
+              <div class="field" style="flex:1"><label>Hostname</label><input id="swcfg-hostname" placeholder="CORE-SW-01" /></div>
+              <div class="field" style="flex:1"><label>Mgmt VLAN</label><input id="swcfg-mgmt-vlan" placeholder="1" value="1" /></div>
+            </div>
+            <div class="row">
+              <div class="field" style="flex:1"><label>Mgmt IP</label><input id="swcfg-ip" placeholder="192.168.1.254" /></div>
+              <div class="field" style="flex:1"><label>Subnet mask</label><input id="swcfg-mask" placeholder="255.255.255.0" /></div>
+            </div>
+            <div class="field"><label>Default gateway</label><input id="swcfg-gw" placeholder="192.168.1.1" /></div>
+            <div class="field"><label>NTP server</label><input id="swcfg-ntp" placeholder="pool.ntp.org" /></div>
+            <div class="row">
+              <div class="field" style="flex:1"><label>Admin user</label><input id="swcfg-user" placeholder="admin" /></div>
+              <div class="field" style="flex:1"><label>Admin password</label><input id="swcfg-pass" type="password" placeholder="•••••••" /></div>
+            </div>
+            <div class="field"><label>Enable secret <span class="muted">(Cisco)</span></label><input id="swcfg-enable" type="password" placeholder="•••••••" /></div>
+            <div class="field">
+              <label>VLANs <span class="muted">— one per line: ID:Name</span></label>
+              <textarea id="swcfg-vlans" rows="4" placeholder="10:Data&#10;20:Voice&#10;30:Management&#10;40:CCTV"></textarea>
+            </div>
+            <div class="row" style="gap:6px;margin-bottom:8px">
+              <button id="swcfg-generate" class="primary" style="flex:1">Generate config</button>
+              <button id="swcfg-push" class="ghost" title="Send config to the connected device" disabled>Push ▸</button>
+              <button id="swcfg-copy" class="ghost small" title="Copy to clipboard" style="display:none">Copy</button>
+            </div>
+            <div id="swcfg-notes" class="swcfg-notes hidden"></div>
+            <pre id="swcfg-output" class="swcfg-output hidden"></pre>
+          </div>
         </div>
       </div>
     </section>
@@ -189,7 +235,7 @@ Local capture needs Wireshark installed on this laptop (it uses tshark, Wireshar
     <div class="sb-item"><span class="sb-label">CMDS</span><span class="sb-val" id="sb-cmds">0</span></div>
     <div class="sb-item"><span class="sb-label">ERRORS</span><span class="sb-val" id="sb-errors">0</span></div>
     <div class="sb-spacer"></div>
-    <div class="sb-item"><span class="sb-val" id="sb-version">v 1.5.0</span></div>
+    <div class="sb-item"><span class="sb-val" id="sb-version">v 1.6.0</span></div>
   </footer>
 
   <!-- Session consent + auto-backup modal -->

@@ -353,6 +353,49 @@ button:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
   border-radius: var(--r); padding: 9px; white-space: pre-wrap; line-height: 1.5;
 }
 
+/* ═══ PCAP SEVERITY HEADER ══════════════════════════════════ */
+#pkt-severity-header { margin-bottom: 8px; }
+.pkt-severity-badge {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: 11.5px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase;
+  padding: 4px 11px; border-radius: 20px; border: 1px solid;
+}
+.sev-normal  { color: var(--ok);    border-color: rgba(38,217,141,.4); background: rgba(38,217,141,.08); }
+.sev-high    { color: var(--amber); border-color: rgba(240,184,67,.4); background: rgba(240,184,67,.07); }
+.sev-critical{ color: var(--red);   border-color: rgba(245,65,65,.45); background: rgba(245,65,65,.09); }
+.pkt-anomaly-list { display: flex; flex-direction: column; gap: 5px; margin-top: 8px; }
+.pkt-anomaly {
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: var(--r);
+  padding: 8px 11px; font-size: 12px; line-height: 1.5;
+}
+.pkt-anomaly-title {
+  font-weight: 700; font-size: 12px; margin-bottom: 2px;
+}
+.pkt-anomaly.sev-critical .pkt-anomaly-title { color: var(--red); }
+.pkt-anomaly.sev-high     .pkt-anomaly-title { color: var(--amber); }
+.pkt-anomaly-detail  { color: var(--text-2); }
+.pkt-anomaly-rec     { color: var(--teal-dim); font-size: 11.5px; margin-top: 3px; }
+.pkt-anomaly-rec::before { content: "→ "; }
+
+/* ═══ SWITCH CONFIG PANE ═════════════════════════════════════ */
+.swcfg-scroll {
+  flex: 1; overflow-y: auto; padding-right: 2px;
+}
+.swcfg-output {
+  font-family: var(--mono); font-size: 11.5px; color: var(--text-2);
+  background: var(--bg); border: 1px solid var(--line); border-radius: var(--r);
+  padding: 10px; white-space: pre-wrap; overflow-x: auto; max-height: 340px; overflow-y: auto;
+  margin-top: 4px;
+}
+.swcfg-notes {
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: var(--r);
+  padding: 9px 12px; font-size: 12px; color: var(--text-2); line-height: 1.55;
+  margin-top: 4px;
+}
+.swcfg-notes ul { margin: 4px 0 0 16px; }
+.swcfg-notes li { margin-bottom: 3px; }
+button.ghost.small { font-size: 11.5px; padding: 5px 10px; }
+
 /* ═══ STATUS BAR ════════════════════════════════════════════ */
 #statusbar {
   height: var(--status-h); flex-shrink: 0; display: flex; align-items: center; gap: 0;
