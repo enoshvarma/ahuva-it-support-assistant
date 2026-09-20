@@ -7,8 +7,8 @@
   "author": "Ahuva Electronic Technologies Pvt. Ltd.",
   "license": "MIT",
   "scripts": {
-    "start": "electron .",
-    "dev": "electron . --dev",
+    "start": "node node_modules/electron/cli.js . --disable-gpu-sandbox --no-sandbox",
+    "dev": "node node_modules/electron/cli.js . --disable-gpu-sandbox --no-sandbox --dev",
     "build:win": "electron-builder --win",
     "build:mac": "electron-builder --mac",
     "build:linux": "electron-builder --linux",

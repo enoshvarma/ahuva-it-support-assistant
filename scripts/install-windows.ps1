@@ -143,6 +143,33 @@ if ($LASTEXITCODE -ne 0) {
 }
 Write-OK "Dependencies installed"
 
+# -- 4b. Ensure Electron binary is actually downloaded ------------------------
+# The electron npm package has a postinstall step that downloads the real
+# binary from GitHub. This can silently fail on first install (network hiccup,
+# corporate proxy, etc.). Detect and fix it here.
+$electronExe = "$InstallDir\node_modules\electron\dist\electron.exe"
+if (-not (Test-Path $electronExe)) {
+    Write-Info "Electron binary not found -- running electron install script..."
+    $prevEAP = $ErrorActionPreference; $ErrorActionPreference = "SilentlyContinue"
+    & node "$InstallDir\node_modules\electron\install.js" 2>&1 | ForEach-Object { Write-Info $_ }
+    $ErrorActionPreference = $prevEAP
+    if (Test-Path $electronExe) {
+        Write-OK "Electron binary downloaded successfully"
+    } else {
+        Write-Info "Auto-download did not place binary at expected path."
+        Write-Info "Trying: npm install --ignore-scripts=false electron..."
+        $prevEAP = $ErrorActionPreference; $ErrorActionPreference = "SilentlyContinue"
+        & npm install electron --ignore-scripts=false 2>&1 | Select-Object -Last 3 | ForEach-Object { Write-Info $_ }
+        $ErrorActionPreference = $prevEAP
+    }
+}
+if (Test-Path $electronExe) {
+    Write-OK "Electron binary ready: $electronExe"
+} else {
+    Write-Info "WARNING: Electron binary still not found at expected path."
+    Write-Info "The launcher will try node_modules\.bin\electron.cmd as fallback."
+}
+
 # -- 5. Packet capture (optional -- Npcap) ------------------------------------
 Write-Step "5/6" "Checking packet capture support..."
 $tshark = Get-Command tshark -ErrorAction SilentlyContinue
@@ -170,22 +197,28 @@ if ($tshark) {
 # -- 6. Shortcuts -------------------------------------------------------------
 Write-Step "6/6" "Creating shortcuts..."
 
-# Find the electron binary directly so the launcher does NOT need npm in PATH
-$electronExe = "$InstallDir\node_modules\electron\dist\electron.exe"
-if (-not (Test-Path $electronExe)) {
-    # Fallback: locate via node_modules/.bin (PS 5.1-compatible — no ?. operator)
-    $_cmd = Get-Command "$InstallDir\node_modules\.bin\electron.cmd" -ErrorAction SilentlyContinue
-    if ($_cmd) { $electronExe = $_cmd.Source }
-}
-
-# Launcher batch — runs electron directly, visible window so errors are readable.
-# Falls back to `npm start` if electron.exe path was not found.
+# Batch file tries three launch methods in order so it always works:
+#   1. node_modules\electron\dist\electron.exe  (direct binary, most reliable)
+#   2. node_modules\.bin\electron.cmd           (npm bin stub)
+#   3. npx electron .                           (last resort, downloads if needed)
 $batPath = "$InstallDir\launch.bat"
-if ($electronExe -and (Test-Path $electronExe)) {
-    $batContent = "@echo off`r`ncd /d `"$InstallDir`"`r`n`"$electronExe`" . --disable-gpu-sandbox --no-sandbox`r`nif errorlevel 1 pause"
-} else {
-    $batContent = "@echo off`r`ncd /d `"$InstallDir`"`r`ncall npm start`r`nif errorlevel 1 pause"
-}
+$batContent = @"
+@echo off
+cd /d "$InstallDir"
+if exist "node_modules\electron\dist\electron.exe" (
+    "node_modules\electron\dist\electron.exe" . --disable-gpu-sandbox --no-sandbox
+    goto :done
+)
+if exist "node_modules\.bin\electron.cmd" (
+    "node_modules\.bin\electron.cmd" . --disable-gpu-sandbox --no-sandbox
+    goto :done
+)
+echo Electron not found in node_modules -- running npm install...
+call npm install
+"node_modules\.bin\electron.cmd" . --disable-gpu-sandbox --no-sandbox
+:done
+if errorlevel 1 pause
+"@
 Set-Content -Path $batPath -Value $batContent -Encoding ASCII
 
 # VBS wrapper: opens the bat invisibly.
