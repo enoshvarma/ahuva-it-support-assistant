@@ -57,6 +57,10 @@ function saveSettings(s) {
 
 // ---------- window ----------
 function createWindow() {
+  const iconExt  = process.platform === "win32" ? "ico"
+                 : process.platform === "darwin" ? "icns" : "png";
+  const iconPath = path.join(__dirname, "assets", `icon.${iconExt}`);
+
   win = new BrowserWindow({
     width: 1440,
     height: 900,
@@ -64,6 +68,7 @@ function createWindow() {
     minHeight: 680,
     backgroundColor: "#07111f",
     title: "Ahuva IT Support Assistant",
+    icon: iconPath,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
