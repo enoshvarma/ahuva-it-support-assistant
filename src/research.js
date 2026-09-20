@@ -8,10 +8,18 @@
 // safe, authoritative places for command/config changes. The engineer can add
 // their own trusted URLs in the Research Center.
 const DEFAULT_SOURCES = [
-  { label: "Allied Telesis — AlliedWare Plus docs", url: "https://www.alliedtelesis.com/documents" },
-  { label: "Cisco — Catalyst configuration guides", url: "https://www.cisco.com/c/en/us/support/switches/catalyst-9200-series-switches/series.html" },
+  // Vendor configuration guides
+  { label: "Allied Telesis — AlliedWare Plus release notes", url: "https://www.alliedtelesis.com/us/en/documents/alliedware-plus-release-notes" },
+  { label: "Cisco — Catalyst IOS-XE release notes", url: "https://www.cisco.com/c/en/us/support/switches/catalyst-9000-series-switches/series.html" },
   { label: "Fortinet — FortiOS admin guide", url: "https://docs.fortinet.com/product/fortigate/" },
-  { label: "MikroTik — RouterOS manual", url: "https://help.mikrotik.com/docs/" }
+  { label: "MikroTik — RouterOS changelog", url: "https://mikrotik.com/download/changelogs" },
+  { label: "Juniper — JunOS release notes", url: "https://www.juniper.net/documentation/us/en/software/junos/release-notes/" },
+  // Security advisories — critical for field engineers
+  { label: "Cisco PSIRT — Security Advisories", url: "https://sec.cloudapps.cisco.com/security/center/publicationListing.x" },
+  { label: "Fortinet PSIRT — Security Advisories", url: "https://www.fortiguard.com/psirt" },
+  { label: "MikroTik — Security advisories", url: "https://mikrotik.com/about/whats_new" },
+  // Best-practice references
+  { label: "NSA — Network Infrastructure Security Guide", url: "https://media.defense.gov/2022/Jun/15/2003018261/-1/-1/0/CTR_NSA_NETWORK_INFRASTRUCTURE_SECURITY_GUIDE_20220615.PDF" }
 ];
 
 function htmlToText(html) {
@@ -43,7 +51,9 @@ From the material below (and your knowledge), produce a concise, PRACTICAL updat
 - New or changed CLI commands / syntax
 - New recommended best-practice configurations
 - Deprecated commands or gotchas to avoid
-- Security advisories affecting configuration (e.g. default-credential, protocol hardening)
+- CRITICAL: Active security advisories (CVEs, PSIRT bulletins) for the above vendors — include CVE ID, affected versions, and the exact config fix or mitigation command
+- Default credentials that must be changed on first login
+- Protocol hardening (SSH version, cipher suites, SNMPv3 requirements)
 
 STRICT RULES:
 - Group by vendor with clear headings.

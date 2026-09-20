@@ -22,6 +22,8 @@ const packets                            = require("./src/packets");
 const models                             = require("./src/models");
 const research                           = require("./src/research");
 const { sanitiseCommand }                = require("./src/validate");
+const { checkForUpdate }                 = require("./src/updater");
+const pkg                                = require("./package.json");
 
 let win = null;
 const session = new DeviceSession();
@@ -58,7 +60,7 @@ function createWindow() {
     height: 900,
     minWidth: 1100,
     minHeight: 680,
-    backgroundColor: "#14181d",
+    backgroundColor: "#07111f",
     title: "Ahuva IT Support Assistant",
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
@@ -104,6 +106,19 @@ function createWindow() {
   }
 }
 
+// ---------- update check ----------
+function scheduleUpdateCheck() {
+  setTimeout(async () => {
+    try {
+      const result = await checkForUpdate(pkg.version);
+      if (result.hasUpdate && win && !win.isDestroyed()) {
+        win.webContents.send("update:available", result);
+        log.info("Update available", { latest: result.latestVersion });
+      }
+    } catch (e) { log.warn("Update check failed", { message: e.message }); }
+  }, 12000);
+}
+
 // ---------- startup ----------
 app.whenReady().then(() => {
   initFileLogging(logsDir());
@@ -117,6 +132,7 @@ app.whenReady().then(() => {
   errorLog = new ErrorLog(userDataDir());
   sendEvent("app_start", { appVersion: app.getVersion() }, loadSettings());
   createWindow();
+  scheduleUpdateCheck();
 
   win && win.webContents.once("did-finish-load", () => {
     const s = loadSettings();
@@ -253,6 +269,17 @@ ipcMain.handle("pkt:capture", async (_e, opts) => {
 ipcMain.handle("pkt:export", (_e, { captureResult, format }) =>
   packets.exportCapture(captureResult, format || "json")
 );
+
+ipcMain.handle("update:check", async () => {
+  try { return await checkForUpdate(pkg.version); }
+  catch { return { hasUpdate: false }; }
+});
+
+ipcMain.handle("shell:openExternal", (_e, url) => {
+  if (typeof url === "string" && (url.startsWith("https://github.com/") || url.startsWith("https://github.com"))) {
+    shell.openExternal(url);
+  }
+});
 
 // ---------- Backup / restore ----------
 ipcMain.handle("backup:store", (_e, { text, device }) => {

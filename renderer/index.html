@@ -8,10 +8,23 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
+  <!-- Update notification banner -->
+  <div id="update-banner" class="hidden">
+    <span>&#8593; New version <b id="update-version"></b> available</span>
+    <div class="sb-spacer"></div>
+    <button id="update-download" class="ghost small">Download</button>
+    <button id="update-dismiss" class="ghost small">&#x2715;</button>
+  </div>
+
   <header id="topbar">
     <div class="brand">
-      <span class="brand-mark">AHUVA</span>
-      <span class="brand-sub">IT Support Assistant</span>
+      <div class="brand-icon">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+      </div>
+      <div>
+        <div class="brand-mark">AHUVA</div>
+        <div class="brand-sub">IT Support Assistant</div>
+      </div>
     </div>
     <div class="top-status">
       <span id="conn-led" class="led led-off"></span>
@@ -125,8 +138,7 @@
       <div class="side-body">
         <div id="pane-copilot" class="side-pane">
           <div class="copilot-head">
-            <span class="muted small-text">AI assistant</span>
-            <span id="ai-provider-label" class="muted small-text"></span>
+            <span class="muted small-text">AI Copilot</span>
           </div>
           <div id="chat"></div>
           <div class="chat-input-row">
@@ -177,8 +189,7 @@ Local capture needs Wireshark installed on this laptop (it uses tshark, Wireshar
     <div class="sb-item"><span class="sb-label">CMDS</span><span class="sb-val" id="sb-cmds">0</span></div>
     <div class="sb-item"><span class="sb-label">ERRORS</span><span class="sb-val" id="sb-errors">0</span></div>
     <div class="sb-spacer"></div>
-    <div class="sb-item"><span class="sb-label">AI</span><span class="sb-val" id="sb-ai">—</span></div>
-    <div class="sb-item"><span class="sb-label">v</span><span class="sb-val" id="sb-version">1.4.0</span></div>
+    <div class="sb-item"><span class="sb-val" id="sb-version">v 1.5.0</span></div>
   </footer>
 
   <!-- Session consent + auto-backup modal -->

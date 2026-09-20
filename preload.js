@@ -65,5 +65,10 @@ contextBridge.exposeInMainWorld("ahuva", {
   onSessionData:   cb => ipcRenderer.on("session:data",   (_e, d) => cb(d)),
   onSessionClosed: cb => ipcRenderer.on("session:closed", (_e, r) => cb(r)),
   onSessionError:  cb => ipcRenderer.on("session:error",  (_e, m) => cb(m)),
-  onResearchDue:   cb => ipcRenderer.on("research:due",   ()      => cb())
+  onResearchDue:   cb => ipcRenderer.on("research:due",   ()      => cb()),
+
+  // Auto-updater
+  checkUpdate:       ()   => ipcRenderer.invoke("update:check"),
+  onUpdateAvailable: cb   => ipcRenderer.on("update:available", (_e, info) => cb(info)),
+  openExternal:      url  => ipcRenderer.invoke("shell:openExternal", url)
 });

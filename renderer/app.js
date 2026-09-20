@@ -27,7 +27,18 @@ const MAX_BUFFER = 200000;
 const term = new Terminal({
   fontFamily: '"Cascadia Mono", Consolas, monospace',
   fontSize: 14,
-  theme: { background: "#0d1013", foreground: "#dce6ee", cursor: "#f0a832" },
+  theme: {
+    background:  "#04090f",
+    foreground:  "#d8e8f0",
+    cursor:      "#00bceb",
+    cursorAccent:"#07111f",
+    selectionBackground: "rgba(0,188,235,.25)",
+    black:   "#0d1929", red:     "#f54141", green:  "#26d98d", yellow: "#f0b843",
+    blue:    "#00bceb", magenta: "#9b7bf7", cyan:   "#26c4d4", white:  "#d8e8f0",
+    brightBlack:   "#253e55", brightRed:   "#ff6b6b", brightGreen: "#3dffa0",
+    brightYellow:  "#ffd060", brightBlue:  "#40d4ff", brightMagenta:"#b39dff",
+    brightCyan:    "#4ae0ee", brightWhite: "#e8f4fc"
+  },
   cursorBlink: true,
   scrollback: 5000
 });
@@ -699,8 +710,6 @@ async function loadSettingsIntoUI() {
   $("s-dash").value = s.dashboardUrl || "";
   $("s-token").value = s.teamToken || "";
   state.autopilot = s.autopilot !== false;
-  $("ai-provider-label").textContent = providerLabel(s);
-  const sbai = $("sb-ai"); if (sbai) sbai.textContent = (s.model || s.provider || "—").slice(0, 28);
   toggleKeyField();
   loadModelPresets(s.provider || "anthropic", true);
 }
@@ -727,7 +736,6 @@ $("s-save").onclick = async () => {
   };
   state.autopilot = s.autopilot;
   await window.ahuva.saveSettings(s);
-  $("ai-provider-label").textContent = providerLabel(s);
   $("modal-settings").classList.add("hidden");
   sysMsg("AI settings saved — active from the next message.");
 };
@@ -988,3 +996,18 @@ window.ahuva.onResearchDue(() => {
   toast.onclick = () => { toast.remove(); $("btn-research").click(); };
   setTimeout(() => toast.remove(), 12000);
 });
+
+// ── auto-update banner ────────────────────────────────────────
+if (window.ahuva.onUpdateAvailable) {
+  window.ahuva.onUpdateAvailable((info) => {
+    const banner = $("update-banner");
+    const ver    = $("update-version");
+    if (!banner || !ver) return;
+    ver.textContent = `v${info.latestVersion}`;
+    banner.classList.remove("hidden");
+    $("update-download").onclick = () => {
+      window.ahuva.openExternal && window.ahuva.openExternal(info.downloadUrl);
+    };
+    $("update-dismiss").onclick = () => banner.classList.add("hidden");
+  });
+}
