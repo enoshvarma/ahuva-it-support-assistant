@@ -24,7 +24,10 @@
   "devDependencies": {
     "electron": "^31.0.0",
     "electron-builder": "^24.0.0",
-    "eslint": "^8.0.0"
+    "eslint": "^8.0.0",
+    "png-to-ico": "^3.0.2",
+    "png2icons": "^2.0.1",
+    "sharp": "^0.35.4"
   },
   "build": {
     "appId": "com.ahuva.it-support-assistant",
