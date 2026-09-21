@@ -12,6 +12,7 @@
     "build:win": "electron-builder --win",
     "build:mac": "electron-builder --mac",
     "build:linux": "electron-builder --linux",
+    "cli": "node cli.js",
     "test": "node scripts/test-units.js",
     "lint": "eslint src/ main.js preload.js --ext .js"
   },
