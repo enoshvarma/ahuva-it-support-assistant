@@ -2,7 +2,7 @@
 
 AI-guided network configuration copilot for field engineers — serial console, SSH/Telnet, IP scanner, packet capture, switch config generator, and an AI assistant that knows Cisco, Juniper, FortiGate, MikroTik, Allied Telesis and more.
 
-Runs as a **desktop app** (Electron) on Windows/macOS/Linux, and as a **terminal CLI** on Android (Termux) and headless Linux.
+Runs as a **desktop app** (Electron) on Windows/macOS/Linux, as a **native Android APK**, and as a **terminal CLI** on Android (Termux) and headless Linux.
 
 ## Install — Windows (Desktop)
 
@@ -29,6 +29,32 @@ curl -fsSL "https://raw.githubusercontent.com/enoshvarma/ahuva-it-support-assist
 ```bash
 curl -fsSL "https://raw.githubusercontent.com/enoshvarma/ahuva-it-support-assistant/main/scripts/install-linux.sh" | bash
 ```
+
+## Install — Android (APK)
+
+Download the latest APK from the [GitHub Actions build](https://github.com/enoshvarma/ahuva-it-support-assistant/actions/workflows/build-android.yml) — click the most recent successful run and download the **ahuva-it-support-debug** artifact.
+
+1. Transfer the APK to your phone
+2. Open it and tap **Install** (enable "Install from unknown sources" if prompted)
+3. Launch **Ahuva IT Support** from your app drawer
+
+### What works in the Android app
+
+- Full graphical UI (same as desktop)
+- SSH connections with legacy algorithm support (old Cisco, Juniper, etc.)
+- Telnet connections with IAC negotiation
+- AI copilot (Anthropic, OpenAI, Google, Ollama, OpenRouter, Groq)
+- Network scanner (ping sweep, port scan, DNS reverse lookup, latency)
+- Wake-on-LAN (magic packet)
+- Traceroute
+- Device auto-detection (10+ vendors)
+- Switch baseline config generator (Cisco IOS/NX-OS, Juniper, FortiGate, MikroTik, Allied Telesis)
+- Command safety classification
+- Knowledge base
+- Error learning & Research Center
+- xterm.js terminal emulator with full ANSI/VT100 support
+
+> **Note:** Packet capture (tshark) is not available on Android — use the AI copilot to get device-side capture commands instead.
 
 ## Install — Android (Termux)
 

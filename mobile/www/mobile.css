@@ -1,0 +1,117 @@
+/* Mobile-specific overrides for Ahuva IT Support on Android */
+
+/* Safe area for notch / status bar */
+body { padding-top: env(safe-area-inset-top); }
+
+/* Stack the 3-column layout vertically on phones */
+@media (max-width: 768px) {
+  :root {
+    --rail: 100%;
+    --side: 100%;
+  }
+
+  #layout {
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  #panel-session {
+    border-right: none;
+    border-bottom: 1px solid var(--line);
+    max-height: none;
+    overflow-y: visible;
+    padding-bottom: 8px;
+  }
+
+  #panel-terminal {
+    min-height: 50vh;
+    flex-shrink: 0;
+  }
+
+  #panel-copilot {
+    border-left: none;
+    border-top: 1px solid var(--line);
+    min-height: 300px;
+    max-height: none;
+  }
+
+  /* Topbar: wrap if needed */
+  #topbar {
+    flex-wrap: wrap;
+    height: auto;
+    min-height: 34px;
+    padding: 4px 8px;
+    gap: 6px;
+  }
+
+  .top-actions { gap: 4px; }
+  .top-actions button { font-size: 11px; padding: 3px 6px; }
+
+  /* Footer status bar */
+  #footer {
+    flex-wrap: wrap;
+    height: auto;
+    min-height: var(--status-h);
+    padding: 2px 8px;
+    gap: 4px;
+  }
+
+  /* Session form fields */
+  .field { padding: 0 8px; margin-bottom: 6px; }
+
+  /* Copilot chat input */
+  .cmd-line { flex-wrap: wrap; }
+  .cmd-line input { min-width: 0; }
+
+  /* Modal / drawer sizing */
+  .modal-body, .drawer-body {
+    max-width: 95vw;
+    max-height: 85vh;
+  }
+
+  /* Scanner grid */
+  .scan-grid, .scanner-results {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Terminal tabs */
+  .term-tabs { flex-wrap: wrap; }
+
+  /* Settings modal content */
+  .settings-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Larger phones in landscape */
+@media (max-width: 1024px) and (min-width: 769px) {
+  :root {
+    --rail: 220px;
+    --side: 300px;
+  }
+}
+
+/* Touch targets: make buttons easier to tap */
+@media (pointer: coarse) {
+  button, .btn, [role="button"] {
+    min-height: 36px;
+    min-width: 36px;
+  }
+
+  input, select, textarea {
+    min-height: 38px;
+    font-size: 16px; /* prevents iOS zoom on focus */
+  }
+
+  .tab { min-height: 32px; padding: 4px 10px; }
+
+  /* Slightly larger hit areas on tree items / list rows */
+  .dev-item, .host-row, .kb-item, .err-item {
+    padding: 8px 10px;
+  }
+}
+
+/* Hide Electron-only UI elements on mobile */
+.electron-only, #update-banner { display: none !important; }

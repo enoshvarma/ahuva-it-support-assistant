@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Ahuva IT Support</string>
+    <string name="title_activity_main">Ahuva IT Support</string>
+    <string name="package_name">com.ahuva.itsupport</string>
+    <string name="custom_url_scheme">com.ahuva.itsupport</string>
+</resources>
