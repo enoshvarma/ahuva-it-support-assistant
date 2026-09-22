@@ -32,11 +32,13 @@ curl -fsSL "https://raw.githubusercontent.com/enoshvarma/ahuva-it-support-assist
 
 ## Install — Android (APK)
 
-Download the latest APK from the [GitHub Actions build](https://github.com/enoshvarma/ahuva-it-support-assistant/actions/workflows/build-android.yml) — click the most recent successful run and download the **ahuva-it-support-debug** artifact.
+**[Download APK](https://github.com/enoshvarma/ahuva-it-support-assistant/releases/download/android-latest/ahuva-it-support.apk)**
 
-1. Transfer the APK to your phone
-2. Open it and tap **Install** (enable "Install from unknown sources" if prompted)
+1. Tap the link above on your Android phone to download
+2. Open the downloaded APK and tap **Install** (enable "Install from unknown sources" if prompted)
 3. Launch **Ahuva IT Support** from your app drawer
+
+The APK is rebuilt automatically from the latest code on every push.
 
 ### What works in the Android app
 
