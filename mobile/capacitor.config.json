@@ -1,0 +1,22 @@
+{
+  "appId": "com.ahuva.itsupport",
+  "appName": "Ahuva IT Support",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "allowMixedContent": true,
+    "backgroundColor": "#07111f"
+  },
+  "plugins": {
+    "StatusBar": {
+      "style": "DARK",
+      "backgroundColor": "#07111f"
+    },
+    "Keyboard": {
+      "resize": "ionic",
+      "resizeOnFullScreen": true
+    }
+  }
+}
