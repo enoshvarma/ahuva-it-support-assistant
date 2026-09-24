@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="AppTheme" parent="android:Theme.Material.NoActionBar">
+        <item name="android:colorPrimary">@color/brand</item>
+        <item name="android:colorPrimaryDark">@color/brand_dark</item>
+        <item name="android:colorAccent">@color/accent</item>
+        <item name="android:statusBarColor">@color/brand_dark</item>
+        <item name="android:navigationBarColor">#000000</item>
+        <item name="android:windowBackground">@color/brand_dark</item>
+        <item name="appBackground">#121417</item>
+        <item name="appSurface">#1C1F24</item>
+        <item name="appSurfaceAlt">#262A31</item>
+        <item name="appTextPrimary">#E8EAED</item>
+        <item name="appTextSecondary">#9AA0A6</item>
+        <item name="appDivider">#2A2E35</item>
+        <item name="appBar">@color/brand_dark</item>
+    </style>
+
+    <style name="AppTheme.Light" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:colorPrimary">@color/brand</item>
+        <item name="android:colorPrimaryDark">@color/brand_dark</item>
+        <item name="android:colorAccent">@color/brand</item>
+        <item name="android:statusBarColor">@color/brand_dark</item>
+        <item name="android:navigationBarColor">#000000</item>
+        <item name="android:windowBackground">@color/brand_dark</item>
+        <item name="appBackground">#F3F5F8</item>
+        <item name="appSurface">#FFFFFF</item>
+        <item name="appSurfaceAlt">#E8ECF1</item>
+        <item name="appTextPrimary">#1F2328</item>
+        <item name="appTextSecondary">#5F6368</item>
+        <item name="appDivider">#DDE1E6</item>
+        <item name="appBar">@color/brand_dark</item>
+    </style>
+
+    <style name="Toolbar" parent="android:Widget.Material.Toolbar">
+        <item name="android:background">?attr/appBar</item>
+        <item name="android:titleTextAppearance">@style/ToolbarTitle</item>
+        <item name="android:subtitleTextAppearance">@style/ToolbarSubtitle</item>
+    </style>
+
+    <style name="ToolbarTitle" parent="android:TextAppearance.Material.Widget.Toolbar.Title">
+        <item name="android:textColor">#FFFFFF</item>
+    </style>
+
+    <style name="ToolbarSubtitle" parent="android:TextAppearance.Material.Widget.Toolbar.Subtitle">
+        <item name="android:textColor">#CFE3F7</item>
+    </style>
+</resources>

@@ -69,6 +69,13 @@ The same release also contains `ahuva-it-support.aab` — upload that file in th
 
 Until those are set, builds are signed with a public CI key that is fine for direct installs but must not be used on Google Play.
 
+## Android IP Finder (network scanner APK)
+
+A separate, lightweight app for finding every device on a network: names, IPs, MACs, manufacturers and open services,
+plus port scanner, ping, traceroute and Wake-on-LAN.
+
+**[Download IP Finder APK](https://github.com/enoshvarma/ahuva-it-support-assistant/releases/download/ipfinder-latest/ahuva-ip-finder.apk)** · Android 5.0+ · details in [ipfinder-android/README.md](ipfinder-android/README.md)
+
 ## Install — Android (Termux)
 
 Runs in your pocket! Open [Termux](https://f-droid.org/packages/com.termux/) and paste:
