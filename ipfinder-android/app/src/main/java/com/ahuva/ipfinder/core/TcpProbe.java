@@ -13,11 +13,26 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /** Non-blocking TCP connect scanner: many ports on one host share a single timeout window. */
 public final class TcpProbe {
     private TcpProbe() {}
+
+    /**
+     * Process-wide cap on sockets this class keeps open at once. Every connect attempt holds a file descriptor, and
+     * Android 9 and older limit an app to about 1024 of them; running out kills the process natively.
+     */
+    private static volatile Semaphore budget = new Semaphore(384);
+    private static volatile int chunk = 96;
+
+    /** Call once at startup with the number of sockets the platform can afford (e.g. 384 on old Android). */
+    public static synchronized void setSocketBudget(int sockets) {
+        int n = Math.max(32, sockets);
+        budget = new Semaphore(n);
+        chunk = Math.max(16, Math.min(256, n / 4));
+    }
 
     public static final class Result {
         public final List<Integer> open = new ArrayList<>();
@@ -30,12 +45,31 @@ public final class TcpProbe {
         return probe(addr, ports, 0, ports.length, timeoutMs, null);
     }
 
-    /** Probes ports[from, to). Stops early if cancel is set. */
+    /** Probes ports[from, to) in budget-sized chunks. Stops early if cancel is set. */
     public static Result probe(InetAddress addr, int[] ports, int from, int to, int timeoutMs, AtomicBoolean cancel) {
         Result r = new Result();
+        long start = System.nanoTime();
+        Semaphore b = budget;
+        int step = chunk;
+        for (int i = from; i < to; i += step) {
+            if (cancel != null && cancel.get()) break;
+            int end = Math.min(to, i + step);
+            int permits = end - i;
+            b.acquireUninterruptibly(permits);
+            try {
+                probeChunk(addr, ports, i, end, timeoutMs, cancel, r, start);
+            } finally {
+                b.release(permits);
+            }
+        }
+        java.util.Collections.sort(r.open);
+        return r;
+    }
+
+    private static void probeChunk(InetAddress addr, int[] ports, int from, int to, int timeoutMs, AtomicBoolean cancel,
+                                   Result r, long start) {
         Selector selector = null;
         List<SocketChannel> channels = new ArrayList<>();
-        long start = System.nanoTime();
         try {
             selector = Selector.open();
             int pending = 0;
@@ -84,8 +118,6 @@ public final class TcpProbe {
             for (SocketChannel ch : channels) closeQuietly(ch);
             if (selector != null) try { selector.close(); } catch (IOException ignored) { }
         }
-        java.util.Collections.sort(r.open);
-        return r;
     }
 
     private static void markOpen(Result r, int port, long startNs) {

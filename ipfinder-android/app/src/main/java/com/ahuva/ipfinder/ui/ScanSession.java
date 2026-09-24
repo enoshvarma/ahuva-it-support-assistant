@@ -46,6 +46,8 @@ public final class ScanSession {
 
     private ScanSession(Context c) {
         app = c.getApplicationContext();
+        // Android 10+ raised the per-app file descriptor limit well above the old 1024.
+        com.ahuva.ipfinder.core.TcpProbe.setSocketBudget(android.os.Build.VERSION.SDK_INT >= 29 ? 1536 : 384);
         Store s = Store.get(app);
         List<Device> last = s.lastScan();
         if (!last.isEmpty()) {
