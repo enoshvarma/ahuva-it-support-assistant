@@ -3,9 +3,5 @@
     <color name="brand">#0B5CAD</color>
     <color name="brand_dark">#083F78</color>
     <color name="accent">#00BFA5</color>
-    <color name="online">#2EB67D</color>
-    <color name="offline">#8A9099</color>
-    <color name="warn">#F2A93B</color>
-    <color name="danger">#E5484D</color>
     <color name="ic_launcher_background">#0B5CAD</color>
 </resources>

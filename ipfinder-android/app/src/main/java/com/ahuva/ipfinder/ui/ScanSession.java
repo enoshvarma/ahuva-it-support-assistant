@@ -230,7 +230,7 @@ public final class ScanSession {
 
     private void acquireMulticast() {
         try {
-            WifiManager wm = (WifiManager) app.getSystemService(Context.WIFI_SERVICE);
+            WifiManager wm = (WifiManager) app.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
             if (wm != null) {
                 multicastLock = wm.createMulticastLock("ipfinder-scan");
                 multicastLock.setReferenceCounted(false);

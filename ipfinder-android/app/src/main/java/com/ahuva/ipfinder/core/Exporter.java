@@ -39,7 +39,7 @@ public final class Exporter {
     }
 
     static String csv(List<Device> list) {
-        StringBuilder sb = new StringBuilder("﻿"); // BOM so Excel reads UTF-8
+        StringBuilder sb = new StringBuilder("\uFEFF"); // BOM so Excel reads UTF-8
         sb.append("Status,Name,IP,MAC,Manufacturer,Type,OS,Hostname,NetBIOS,Workgroup,mDNS,Model,Open ports,Services,HTTP title,Ping ms,Favorite,Notes\r\n");
         for (Device d : list) {
             synchronized (d) {
