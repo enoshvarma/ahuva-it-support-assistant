@@ -249,6 +249,7 @@ async function main() {
     if (!/Cisco/.test(out) || !/SSH|22/.test(out)) throw new Error(out.slice(0, 300));
     const scan = await page.evaluate(() => window.__native.calls.find(c => c.name === "scanRange").args);
     if (scan.target !== "10.0.0.0/30" || !Array.isArray(scan.ports)) throw new Error(JSON.stringify(scan));
+    if (!(scan.portTimeout >= 1000)) throw new Error("port probe timeout too short for phone Wi-Fi: " + scan.portTimeout);
     await shot("05-scanner");
     const wol = await page.evaluate(() => window.ahuva.scannerWoL("00:11:22:33:44:55", "255.255.255.255"));
     const tr = await page.evaluate(() => window.ahuva.scannerTraceroute("10.0.0.2"));
