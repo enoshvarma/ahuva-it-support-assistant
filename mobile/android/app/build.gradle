@@ -1,5 +1,12 @@
 apply plugin: 'com.android.application'
 
+import groovy.json.JsonSlurper
+
+// Same version as the desktop app; CI supplies an ever-increasing build number.
+def appVersionName = new JsonSlurper().parse(rootProject.file('../../package.json')).version
+def appVersionCode = (System.getenv("ANDROID_VERSION_CODE") ?: "1").toInteger()
+def releaseKeystore = System.getenv("KEYSTORE_FILE")
+
 android {
     namespace "com.ahuva.itsupport"
     compileSdk rootProject.ext.compileSdkVersion
@@ -7,9 +14,10 @@ android {
         applicationId "com.ahuva.itsupport"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 2
-        versionName "1.8.0"
+        versionCode appVersionCode
+        versionName appVersionName
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        buildConfigField "boolean", "SELFTEST", "false"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
              // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
@@ -17,13 +25,17 @@ android {
         }
     }
 
+    buildFeatures {
+        buildConfig true
+    }
+
     signingConfigs {
         release {
-            if (System.getenv("KEYSTORE_FILE")) {
-                storeFile file(System.getenv("KEYSTORE_FILE"))
-                storePassword System.getenv("KEYSTORE_PASSWORD") ?: ""
+            if (releaseKeystore) {
+                storeFile file(releaseKeystore)
+                storePassword System.getenv("KEYSTORE_PASSWORD")
                 keyAlias System.getenv("KEY_ALIAS") ?: "ahuva"
-                keyPassword System.getenv("KEY_PASSWORD") ?: ""
+                keyPassword System.getenv("KEY_PASSWORD") ?: System.getenv("KEYSTORE_PASSWORD")
             }
         }
     }
@@ -33,20 +45,30 @@ android {
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            if (System.getenv("KEYSTORE_FILE")) {
-                signingConfig signingConfigs.release
-            }
+            // Local builds without a keystore fall back to the debug key so the APK still installs.
+            signingConfig releaseKeystore ? signingConfigs.release : signingConfigs.debug
+        }
+        // Byte-for-byte the release configuration plus the CI self-test hook; never published.
+        selftest {
+            initWith release
+            buildConfigField "boolean", "SELFTEST", "true"
+            matchingFallbacks = ['release']
         }
     }
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        coreLibraryDesugaringEnabled true
     }
 
     packagingOptions {
         resources {
-            excludes += ['META-INF/NOTICE.md', 'META-INF/LICENSE.md']
+            excludes += ['META-INF/NOTICE.md', 'META-INF/LICENSE.md', 'META-INF/versions/9/OSGI-INF/MANIFEST.MF']
+        }
+    }
+
+    testOptions {
+        unitTests.all {
+            testLogging { events "passed", "failed", "skipped"; exceptionFormat "full" }
         }
     }
 }
@@ -64,7 +86,11 @@ dependencies {
     implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
     implementation project(':capacitor-android')
     implementation 'com.github.mwiede:jsch:0.2.18'
+    implementation 'com.github.mik3y:usb-serial-for-android:3.8.1'
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.0.4'
     testImplementation "junit:junit:$junitVersion"
+    testImplementation 'org.apache.sshd:sshd-core:2.12.1'
+    testImplementation 'org.slf4j:slf4j-nop:1.7.36'
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
     implementation project(':capacitor-cordova-android-plugins')

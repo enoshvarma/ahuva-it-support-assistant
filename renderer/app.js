@@ -290,7 +290,7 @@ function aiIntro() {
     "If anything goes wrong, hit \"Restore last config\" and I'll roll it back.");
 }
 
-$("btn-send").onclick = sendChat;
+$("btn-send").onclick = () => sendChat();
 $("chat-input").addEventListener("keydown", e => {
   if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendChat(); }
 });
@@ -1071,7 +1071,7 @@ async function initPackets() {
   } else {
     badge.textContent = "not installed"; badge.className = "pill pill-no";
     $("pkt-capture").disabled = true;
-    $("pkt-output").textContent = "Wireshark is not installed on this laptop.\n\nInstall it from wireshark.org to enable local capture (this app uses tshark, Wireshark's own capture engine, and saves a .pcapng you can open in the Wireshark GUI).\n\nYou can still use \"On-device capture\" — that runs the switch/firewall's own built-in packet sniffer over your existing session, which is usually the better tool on a switched network anyway.";
+    $("pkt-output").textContent = chk.reason || "Wireshark is not installed on this laptop.\n\nInstall it from wireshark.org to enable local capture (this app uses tshark, Wireshark's own capture engine, and saves a .pcapng you can open in the Wireshark GUI).\n\nYou can still use \"On-device capture\" — that runs the switch/firewall's own built-in packet sniffer over your existing session, which is usually the better tool on a switched network anyway.";
   }
 }
 
