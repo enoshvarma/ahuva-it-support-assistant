@@ -99,6 +99,10 @@ const STRIP_MODERN_APIS = `
   delete String.prototype.trimStart;
   delete Promise.allSettled;
   delete AbortSignal.timeout;
+  delete Element.prototype.replaceChildren;
+  delete Document.prototype.replaceChildren;
+  delete DocumentFragment.prototype.replaceChildren;
+  delete Blob.prototype.text;
 })();`;
 
 const AI_REPLY = {

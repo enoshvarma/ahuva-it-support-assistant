@@ -33,6 +33,33 @@
       Promise.resolve().then(cb).catch(function (e) { setTimeout(function () { throw e; }, 0); });
     };
   }
+  // xterm renders every terminal row with replaceChildren (Chrome 86).
+  [window.Element, window.Document, window.DocumentFragment].forEach(function (C) {
+    if (C && !C.prototype.replaceChildren) {
+      Object.defineProperty(C.prototype, "replaceChildren", {
+        configurable: true, writable: true,
+        value: function () {
+          while (this.lastChild) this.removeChild(this.lastChild);
+          if (arguments.length) this.append.apply(this, arguments);
+        }
+      });
+    }
+  });
+  // Knowledge-base import reads picked files with Blob.text() (Chrome 76).
+  if (window.Blob && !Blob.prototype.text) {
+    Object.defineProperty(Blob.prototype, "text", {
+      configurable: true, writable: true,
+      value: function () {
+        var blob = this;
+        return new Promise(function (resolve, reject) {
+          var r = new FileReader();
+          r.onload = function () { resolve(r.result); };
+          r.onerror = function () { reject(r.error); };
+          r.readAsText(blob);
+        });
+      }
+    });
+  }
   if (!String.prototype.trimEnd) {
     String.prototype.trimEnd = function () { return this.replace(/\s+$/, ""); };
   }
