@@ -458,7 +458,8 @@
         target: String(target || "").trim(),
         concurrency: Math.min(parseInt(o.concurrency, 10) || 50, 150),
         pingTimeout: parseInt(o.pingTimeout, 10) || 1000,
-        portTimeout: parseInt(o.portTimeout, 10) || 600,
+        // Phone Wi-Fi power saving delays first packets; the desktop's 600 ms misses open ports on Android.
+        portTimeout: Math.max(parseInt(o.portTimeout, 10) || 1500, 1000),
         portFallback: !!o.portFallback,
         ports,
       });
