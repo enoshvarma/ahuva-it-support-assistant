@@ -64,6 +64,7 @@ jobs:
           npm install --no-save --no-audit --no-fund playwright@1.56.1
           npx playwright install --with-deps chromium
           node test/ui-smoke.js ui-screenshots
+          LEGACY=1 node test/ui-smoke.js ui-screenshots/legacy-webview
 
       - name: Upload UI screenshots
         if: always()

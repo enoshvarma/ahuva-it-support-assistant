@@ -3,6 +3,13 @@
 (function () {
   "use strict";
 
+  // Collect errors from the very first script so library load failures reach the health report.
+  var errors = window.__ahuvaErrors = [];
+  window.addEventListener("error", function (e) { errors.push(String(e.message || e.error || "error")); });
+  window.addEventListener("unhandledrejection", function (e) {
+    errors.push("unhandled: " + String((e.reason && e.reason.message) || e.reason));
+  });
+
   var m = /Chrome\/(\d+)/.exec(navigator.userAgent || "");
   var chrome = m ? parseInt(m[1], 10) : 0;
   var missing = typeof Promise === "undefined" || typeof fetch === "undefined" || typeof Map === "undefined";
@@ -19,6 +26,13 @@
     return;
   }
 
+  // xterm 5 references globalThis and queueMicrotask (Chrome 71+); Android 9's stock WebView is Chrome 69.
+  if (typeof globalThis === "undefined") window.globalThis = window;
+  if (typeof queueMicrotask !== "function") {
+    window.queueMicrotask = function (cb) {
+      Promise.resolve().then(cb).catch(function (e) { setTimeout(function () { throw e; }, 0); });
+    };
+  }
   if (!String.prototype.trimEnd) {
     String.prototype.trimEnd = function () { return this.replace(/\s+$/, ""); };
   }

@@ -87,6 +87,20 @@ const MOCK_NATIVE = `
   window.alert = () => {}; window.confirm = () => true;
 })();`;
 
+// LEGACY=1 removes APIs newer than Chrome 69 (Android 9's stock WebView) so the polyfills in compat.js are exercised.
+const STRIP_MODERN_APIS = `
+(() => {
+  delete window.globalThis;
+  delete window.queueMicrotask;
+  delete Array.prototype.flat;
+  delete Array.prototype.flatMap;
+  delete Object.fromEntries;
+  delete String.prototype.trimEnd;
+  delete String.prototype.trimStart;
+  delete Promise.allSettled;
+  delete AbortSignal.timeout;
+})();`;
+
 const AI_REPLY = {
   choices: [{ message: { content: JSON.stringify({
     reply: "Run show vlan brief to list VLANs.",
@@ -109,6 +123,7 @@ async function main() {
     await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(AI_REPLY) });
   });
   await page.route("https://api.github.com/**", route => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ name: "Android APK v1.7.0", body: "versionCode: 5", html_url: "https://github.com/x" }) }));
+  if (process.env.LEGACY === "1") await page.addInitScript(STRIP_MODERN_APIS);
   await page.addInitScript(MOCK_NATIVE);
   const view = async v => { await page.click(`#m-nav button[data-view="${v}"]`); await page.waitForTimeout(150); };
 

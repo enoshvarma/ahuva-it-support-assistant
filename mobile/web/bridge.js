@@ -11,9 +11,7 @@
   const Network = P.AhuvaNetwork;
   const M = window.AhuvaModules;
 
-  const startupErrors = [];
-  window.addEventListener("error", e => startupErrors.push(String(e.message || e.error || "error")));
-  window.addEventListener("unhandledrejection", e => startupErrors.push("unhandled: " + String((e.reason && e.reason.message) || e.reason)));
+  const startupErrors = window.__ahuvaErrors || [];
 
   // ── persistence ─────────────────────────────────────────────────────────
   const K = {
