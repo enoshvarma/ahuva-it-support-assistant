@@ -292,7 +292,7 @@
     // ─── Safety / mode (pure JS) ────────────────────────────────────────
     classify:   (cmd) => M.safety.classifyCommand(String(cmd || "")),
     detectMode: (buf) => M.mode.detectCliMode(buf),
-    prepFor:    (p)   => M.mode.prepCommandsFor(p.mode, p.cmd),
+    prepFor:    (mode, cmd) => M.mode.prepCommandsFor(mode, cmd),
 
     // ─── Device fingerprinting (pure JS) ────────────────────────────────
     fingerprint: (text) => M.detect.fingerprintDevice(text),
@@ -436,20 +436,21 @@
     },
 
     // ─── Network scanner ────────────────────────────────────────────────
-    scannerStart: async (p) => {
+    scannerStart: async (target, opts) => {
       if (!AhuvaNetwork) throw new Error("Network scanner plugin not available");
-      return AhuvaNetwork.scanRange({ target: p.target, opts: p.opts || {} });
+      return AhuvaNetwork.scanRange({ target: String(target || ""), opts: opts || {} });
     },
+    scannerStop: async () => false,  // native plugin has no cancel; scan runs to completion
     scannerNmap: async () => {
       return { error: "Nmap enrichment requires the nmap binary (not available on Android by default)." };
     },
-    scannerWoL: async (p) => {
+    scannerWoL: async (mac, broadcast) => {
       if (!AhuvaNetwork) throw new Error("Network plugin not available");
-      return AhuvaNetwork.wakeOnLan({ mac: p.mac, broadcast: p.broadcast });
+      return AhuvaNetwork.wakeOnLan({ mac: String(mac || ""), broadcast: broadcast || "255.255.255.255" });
     },
-    scannerTraceroute: async (p) => {
+    scannerTraceroute: async (ip) => {
       if (!AhuvaNetwork) throw new Error("Network plugin not available");
-      return AhuvaNetwork.traceroute({ ip: p.ip });
+      return AhuvaNetwork.traceroute({ ip: String(ip || "") });
     },
 
     // ─── Event listeners ────────────────────────────────────────────────

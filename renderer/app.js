@@ -842,7 +842,11 @@ function initScanner() {
   });
 
   $("scan-start").onclick = startScan;
-  $("scan-stop").onclick  = () => { scanAbortFlag = true; };
+  $("scan-stop").onclick  = () => {
+    scanAbortFlag = true;
+    if (window.ahuva.scannerStop) window.ahuva.scannerStop();
+    sysMsg("Stopping scan after the current batch…");
+  };
   $("scan-wol-send").onclick = async () => {
     const mac = $("scan-wol-mac").value.trim();
     if (!mac) return;

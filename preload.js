@@ -79,6 +79,7 @@ contextBridge.exposeInMainWorld("ahuva", {
 
   // Network Scanner
   scannerStart:      (target, opts) => ipcRenderer.invoke("scanner:start", { target, opts }),
+  scannerStop:       ()             => ipcRenderer.invoke("scanner:stop"),
   scannerNmap:       ()             => ipcRenderer.invoke("scanner:nmap"),
   scannerWoL:        (mac, bcast)   => ipcRenderer.invoke("scanner:wol", { mac, broadcast: bcast }),
   scannerTraceroute: (ip)           => ipcRenderer.invoke("scanner:traceroute", { ip }),

@@ -436,7 +436,11 @@ ipcMain.handle("scanner:wol", (_e, { mac, broadcast }) =>
 
 ipcMain.handle("scanner:traceroute", (_e, { ip }) => scanner.traceroute(String(ip || "")));
 
+let scanAborted = false;
+ipcMain.handle("scanner:stop", () => { scanAborted = true; return true; });
+
 ipcMain.handle("scanner:start", async (_e, { target, opts }) => {
+  scanAborted = false;
   const scanOpts = {
     concurrency: Math.min(parseInt(opts?.concurrency) || 50, 150),
     fullScan:    !!opts?.fullScan,
@@ -444,6 +448,7 @@ ipcMain.handle("scanner:start", async (_e, { target, opts }) => {
     pingTimeout: parseInt(opts?.pingTimeout)  || 1000,
     portTimeout: parseInt(opts?.portTimeout)  || 600,
     portFallback: !!opts?.portFallback,
+    shouldAbort:  () => scanAborted,
   };
   const results = await scanner.scanRange(target, scanOpts, (result, done, total) => {
     if (win && !win.isDestroyed()) {

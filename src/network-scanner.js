@@ -31,7 +31,7 @@ const OUI = {
   "00:16:CA": "Juniper Networks","2C:6B:F5": "Juniper Networks","F0:9E:4A": "Juniper Networks",
   "00:00:5E": "IANA/Cisco",
   "00:08:9F": "Allied Telesis",  "00:00:CD": "Allied Telesis", "00:18:6E": "Allied Telesis",
-  "00:1A:1E": "Allied Telesis",  "70:54:F5": "Allied Telesis",
+  "70:54:F5": "Allied Telesis",
   "00:0C:E5": "Fortinet",        "00:09:0F": "Fortinet",       "3C:FD:FE": "Fortinet",
   "90:6C:AC": "Fortinet",        "08:5B:0E": "Fortinet",
   "00:18:0A": "Palo Alto Networks","C4:B5:01": "Palo Alto Networks",
@@ -367,7 +367,7 @@ async function scanHost(ip, opts = {}) {
 /**
  * Scan a range of IPs.
  * @param {string} target   - "192.168.1.0/24" | "192.168.1.1-20" | single IP
- * @param {object} opts     - { concurrency, fullScan, useNmap, pingTimeout, portTimeout }
+ * @param {object} opts     - { concurrency, fullScan, useNmap, pingTimeout, portTimeout, shouldAbort }
  * @param {function} onProgress - called with each completed HostResult
  * @returns {Promise<HostResult[]>}  all results when done
  */
@@ -380,6 +380,7 @@ async function scanRange(target, opts = {}, onProgress = null) {
 
   // Process in concurrent batches
   for (let i = 0; i < ips.length; i += concurrency) {
+    if (opts.shouldAbort && opts.shouldAbort()) break;
     const batch   = ips.slice(i, i + concurrency);
     const batchResults = await Promise.all(batch.map(ip => scanHost(ip, scanOpts)));
     for (const r of batchResults) {
