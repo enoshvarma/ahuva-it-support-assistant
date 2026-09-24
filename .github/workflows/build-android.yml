@@ -54,35 +54,80 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x mobile/android/gradlew
 
-      - name: Build debug APK
-        working-directory: mobile/android
-        run: ./gradlew assembleDebug
+      - name: Generate signing keystore
+        run: |
+          keytool -genkeypair -v \
+            -keystore mobile/android/app/release.keystore \
+            -alias ahuva \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -storepass ahuva-release \
+            -keypass ahuva-release \
+            -dname "CN=Ahuva IT Support, OU=Mobile, O=Ahuva, L=Unknown, ST=Unknown, C=US"
 
-      - name: Upload APK artifact
+      - name: Build release APK
+        working-directory: mobile/android
+        env:
+          KEYSTORE_FILE: ${{ github.workspace }}/mobile/android/app/release.keystore
+          KEYSTORE_PASSWORD: ahuva-release
+          KEY_ALIAS: ahuva
+          KEY_PASSWORD: ahuva-release
+        run: ./gradlew assembleRelease
+
+      - name: Upload release APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ahuva-it-support-debug
-          path: mobile/android/app/build/outputs/apk/debug/app-debug.apk
+          name: ahuva-it-support-release
+          path: mobile/android/app/build/outputs/apk/release/app-release.apk
           retention-days: 90
 
-      - name: Rename APK
+      - name: Rename APK for release
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-        run: cp mobile/android/app/build/outputs/apk/debug/app-debug.apk ahuva-it-support.apk
+        run: cp mobile/android/app/build/outputs/apk/release/app-release.apk ahuva-it-support.apk
 
-      - name: Create or update release
+      - name: Delete existing release
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: gh release delete android-latest --yes 2>/dev/null || true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Delete existing tag
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: git push origin :refs/tags/android-latest 2>/dev/null || true
+
+      - name: Create GitHub Release
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: android-latest
-          name: Android APK (Latest Build)
+          name: "Ahuva IT Support - Android APK v1.8.0"
           body: |
-            Latest Android debug APK — built automatically from main.
+            ## Ahuva IT Support Assistant — Android APK
 
-            **Download the APK below and install on your Android phone.**
+            **Direct download:** Tap the `ahuva-it-support.apk` file below to download and install.
 
-            Tap `ahuva-it-support.apk` under Assets to download directly.
+            ### Features
+            - Full graphical UI (same as desktop app)
+            - SSH with legacy algorithm support (Cisco, Juniper, FortiGate, MikroTik, etc.)
+            - Telnet with IAC negotiation
+            - AI copilot (Anthropic, OpenAI, Google, Ollama, OpenRouter, Groq)
+            - Network scanner, Wake-on-LAN, traceroute
+            - Switch baseline config generator (7 vendors)
+            - Command safety classification
+            - Knowledge base with vendor docs
+            - Error learning & Research Center
+
+            ### Compatibility
+            - Android 5.0 (Lollipop) and above
+            - Works on all Android phones and tablets
+
+            ### Install
+            1. Download `ahuva-it-support.apk` below
+            2. Open it on your Android device
+            3. Tap Install (enable "Unknown sources" if prompted)
+
+            _Built automatically from the latest code on main._
           files: ahuva-it-support.apk
-          prerelease: true
-          make_latest: false
+          prerelease: false
+          make_latest: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
