@@ -34,10 +34,11 @@ jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 40
-    env:
-      ANDROID_VERSION_CODE: ${{ 1000 + github.run_number }}
     steps:
       - uses: actions/checkout@v4
+
+      - name: Build number
+        run: echo "ANDROID_VERSION_CODE=$((1000 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
 
       - uses: actions/setup-node@v4
         with:
@@ -227,9 +228,9 @@ jobs:
       - name: Publish to the android-latest release
         env:
           GH_TOKEN: ${{ github.token }}
-          VERSION_CODE: ${{ 1000 + github.run_number }}
         run: |
           set -e
+          VERSION_CODE=$((1000 + GITHUB_RUN_NUMBER))
           VERSION=$(node -p "require('./package.json').version")
           MODE=$(cat dist/signing-mode.txt)
           {
