@@ -8,6 +8,8 @@ on:
       - 'renderer/**'
       - 'src/**'
       - 'kb/**'
+      - 'assets/**'
+      - 'package.json'
       - '.github/workflows/build-android.yml'
   pull_request:
     branches: [main]
@@ -16,118 +18,248 @@ on:
       - 'renderer/**'
       - 'src/**'
       - 'kb/**'
+      - 'assets/**'
+      - 'package.json'
+      - '.github/workflows/build-android.yml'
   workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
+    timeout-minutes: 40
+    env:
+      ANDROID_VERSION_CODE: ${{ 1000 + github.run_number }}
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
+      - uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Install root dependencies
-        run: npm install
-
-      - name: Install mobile dependencies
-        working-directory: mobile
-        run: npm install
+      - name: Install dependencies
+        run: |
+          npm install --ignore-scripts --no-audit --no-fund
+          cd mobile && npm ci --no-audit --no-fund
 
       - name: Build web assets
         working-directory: mobile
         run: node build-web.js
 
+      - name: Phone UI test (real UI + bridge, mocked native layer)
+        working-directory: mobile
+        run: |
+          npm install --no-save --no-audit --no-fund playwright@1.56.1
+          npx playwright install --with-deps chromium
+          node test/ui-smoke.js ui-screenshots
+
+      - name: Upload UI screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-screenshots
+          path: mobile/ui-screenshots
+          if-no-files-found: ignore
+
       - name: Sync Capacitor
         working-directory: mobile
         run: npx cap sync android
 
-      - name: Make gradlew executable
-        run: chmod +x mobile/android/gradlew
-
-      - name: Generate signing keystore
-        run: |
-          keytool -genkeypair -v \
-            -keystore mobile/android/app/release.keystore \
-            -alias ahuva \
-            -keyalg RSA -keysize 2048 -validity 10000 \
-            -storepass ahuva-release \
-            -keypass ahuva-release \
-            -dname "CN=Ahuva IT Support, OU=Mobile, O=Ahuva, L=Unknown, ST=Unknown, C=US"
-
-      - name: Build release APK
-        working-directory: mobile/android
+      - name: Configure signing
         env:
-          KEYSTORE_FILE: ${{ github.workspace }}/mobile/android/app/release.keystore
-          KEYSTORE_PASSWORD: ahuva-release
-          KEY_ALIAS: ahuva
-          KEY_PASSWORD: ahuva-release
-        run: ./gradlew assembleRelease
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          if [ -n "$ANDROID_KEYSTORE_BASE64" ] && [ -n "$ANDROID_KEYSTORE_PASSWORD" ]; then
+            echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/upload.keystore"
+            echo "KEYSTORE_FILE=$RUNNER_TEMP/upload.keystore" >> "$GITHUB_ENV"
+            echo "KEYSTORE_PASSWORD=$ANDROID_KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+            echo "SIGNING_MODE=upload-key" >> "$GITHUB_ENV"
+          else
+            echo "::warning::ANDROID_KEYSTORE_BASE64 / ANDROID_KEYSTORE_PASSWORD secrets not set — signing with the public CI fallback key (fine for sideloading, not for Play Store)."
+            echo "KEYSTORE_FILE=$GITHUB_WORKSPACE/mobile/android/app/ci-fallback.keystore" >> "$GITHUB_ENV"
+            echo "KEYSTORE_PASSWORD=ahuva-ci-fallback" >> "$GITHUB_ENV"
+            echo "SIGNING_MODE=ci-fallback" >> "$GITHUB_ENV"
+          fi
+          echo "KEY_ALIAS=ahuva" >> "$GITHUB_ENV"
 
-      - name: Upload release APK artifact
-        uses: actions/upload-artifact@v4
+      - name: Unit tests (SSH / Telnet / scanner against real servers)
+        working-directory: mobile/android
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon testDebugUnitTest
+
+      - name: Build release APK, Play Store bundle and self-test APK
+        working-directory: mobile/android
+        run: ./gradlew --no-daemon assembleRelease bundleRelease assembleSelftest
+
+      - name: Verify signatures and collect outputs
+        run: |
+          set -e
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          OUT=mobile/android/app/build/outputs
+          mkdir -p dist
+          cp $OUT/apk/release/app-release.apk dist/ahuva-it-support.apk
+          cp $OUT/bundle/release/app-release.aab dist/ahuva-it-support.aab
+          cp $OUT/apk/selftest/app-selftest.apk selftest.apk
+          "$BT/apksigner" verify --print-certs dist/ahuva-it-support.apk | tee dist/signing.txt
+          "$BT/aapt2" dump badging dist/ahuva-it-support.apk | grep -E "^package|sdkVersion|targetSdkVersion" | tee dist/badging.txt
+          echo "$SIGNING_MODE" > dist/signing-mode.txt
+          (cd dist && sha256sum ahuva-it-support.apk ahuva-it-support.aab > SHA256SUMS.txt)
+          ls -la dist
+
+      - uses: actions/upload-artifact@v4
         with:
           name: ahuva-it-support-release
-          path: mobile/android/app/build/outputs/apk/release/app-release.apk
+          path: dist/
           retention-days: 90
 
-      - name: Rename APK for release
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-        run: cp mobile/android/app/build/outputs/apk/release/app-release.apk ahuva-it-support.apk
-
-      - name: Delete existing release
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-        run: gh release delete android-latest --yes 2>/dev/null || true
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Delete existing tag
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-        run: git push origin :refs/tags/android-latest 2>/dev/null || true
-
-      - name: Create GitHub Release
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-        uses: softprops/action-gh-release@v2
+      - uses: actions/upload-artifact@v4
         with:
-          tag_name: android-latest
-          name: "Ahuva IT Support - Android APK v1.8.0"
-          body: |
-            ## Ahuva IT Support Assistant — Android APK
+          name: ahuva-it-support-selftest
+          path: selftest.apk
+          retention-days: 14
 
-            **Direct download:** Tap the `ahuva-it-support.apk` file below to download and install.
+  device-test:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        api-level: [28, 30, 33, 35]
+    steps:
+      - uses: actions/checkout@v4
 
-            ### Features
-            - Full graphical UI (same as desktop app)
-            - SSH with legacy algorithm support (Cisco, Juniper, FortiGate, MikroTik, etc.)
-            - Telnet with IAC negotiation
-            - AI copilot (Anthropic, OpenAI, Google, Ollama, OpenRouter, Groq)
-            - Network scanner, Wake-on-LAN, traceroute
-            - Switch baseline config generator (7 vendors)
-            - Command safety classification
-            - Knowledge base with vendor docs
-            - Error learning & Research Center
+      - uses: actions/download-artifact@v4
+        with:
+          name: ahuva-it-support-release
+          path: dist
 
-            ### Compatibility
-            - Android 5.0 (Lollipop) and above
-            - Works on all Android phones and tablets
+      - uses: actions/download-artifact@v4
+        with:
+          name: ahuva-it-support-selftest
+          path: dist
 
-            ### Install
-            1. Download `ahuva-it-support.apk` below
-            2. Open it on your Android device
-            3. Tap Install (enable "Unknown sources" if prompted)
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
 
-            _Built automatically from the latest code on main._
-          files: ahuva-it-support.apk
-          prerelease: false
-          make_latest: true
+      - name: Start test servers (mock AI, telnet, OpenSSH)
+        run: |
+          nohup python3 mobile/test/emulator/servers.py > servers.log 2>&1 &
+          docker run -d --name sshd -p 2222:2222 \
+            -e PUID=1000 -e PGID=1000 -e PASSWORD_ACCESS=true \
+            -e USER_NAME=ahuva -e USER_PASSWORD=Ahuva-Test-1 \
+            lscr.io/linuxserver/openssh-server:latest
+          for i in $(seq 1 60); do
+            nc -z 127.0.0.1 2222 && nc -z 127.0.0.1 2323 && nc -z 127.0.0.1 8080 && break
+            sleep 2
+          done
+          nc -z 127.0.0.1 2222 && nc -z 127.0.0.1 2323 && nc -z 127.0.0.1 8080
+
+      - name: Run on Android emulator (API ${{ matrix.api-level }})
+        uses: reactivecircus/android-emulator-runner@v2
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          API: ${{ matrix.api-level }}
+          OUT: emulator-results
+          RELEASE_APK: dist/ahuva-it-support.apk
+          SELFTEST_APK: dist/selftest.apk
+        with:
+          api-level: ${{ matrix.api-level }}
+          target: google_apis
+          arch: x86_64
+          ram-size: 3072M
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot
+          script: bash mobile/test/emulator/run-on-emulator.sh
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### Android API ${{ matrix.api-level }}"
+            echo '```'
+            cat emulator-results/release-status.txt 2>/dev/null || echo "(no release status)"
+            sed 's/^.*AhuvaSelfTest: //' emulator-results/selftest-api${{ matrix.api-level }}.txt 2>/dev/null || echo "(no self-test output)"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          cp servers.log emulator-results/ 2>/dev/null || true
+          docker logs sshd > emulator-results/sshd.log 2>&1 || true
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: emulator-api${{ matrix.api-level }}
+          path: emulator-results
+          if-no-files-found: ignore
+
+  publish:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [build, device-test]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: android-publish
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: ahuva-it-support-release
+          path: dist
+
+      - name: Publish to the android-latest release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION_CODE: ${{ 1000 + github.run_number }}
+        run: |
+          set -e
+          VERSION=$(node -p "require('./package.json').version")
+          MODE=$(cat dist/signing-mode.txt)
+          {
+            echo "## Ahuva IT Support — Android v$VERSION (build $VERSION_CODE)"
+            echo
+            echo "**Download:** tap \`ahuva-it-support.apk\` below, open it, and tap **Install**."
+            echo
+            echo "Tested before publishing on Android 9, 11, 13 and 15 emulators: SSH (real OpenSSH), Telnet, AI copilot, knowledge base, research, scanner, traceroute, Wake-on-LAN, switch config generator, command safety and error learning."
+            echo
+            echo "- Works on Android 5.1+ with an up-to-date Android System WebView"
+            echo "- \`ahuva-it-support.aab\` is the bundle to upload to Google Play"
+            if [ "$MODE" = "ci-fallback" ]; then
+              echo
+              echo "> ⚠ Signed with the public CI fallback key. Add the ANDROID_KEYSTORE_BASE64 and ANDROID_KEYSTORE_PASSWORD repository secrets before publishing to Google Play."
+            fi
+            echo
+            echo '```'
+            cat dist/SHA256SUMS.txt
+            echo '```'
+            echo
+            echo "<!-- versionCode: $VERSION_CODE -->"
+          } > notes.md
+          git tag -f android-latest "$GITHUB_SHA"
+          git push -f origin refs/tags/android-latest
+          TITLE="Ahuva IT Support — Android v$VERSION (build $VERSION_CODE)"
+          FILES="dist/ahuva-it-support.apk dist/ahuva-it-support.aab dist/SHA256SUMS.txt"
+          if gh release view android-latest >/dev/null 2>&1; then
+            gh release upload android-latest $FILES --clobber
+            gh release edit android-latest --title "$TITLE" --notes-file notes.md --prerelease=false --latest
+          else
+            gh release create android-latest $FILES --title "$TITLE" --notes-file notes.md --latest
+          fi
+          echo "Direct download: https://github.com/${GITHUB_REPOSITORY}/releases/download/android-latest/ahuva-it-support.apk" >> "$GITHUB_STEP_SUMMARY"

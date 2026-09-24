@@ -32,31 +32,42 @@ curl -fsSL "https://raw.githubusercontent.com/enoshvarma/ahuva-it-support-assist
 
 ## Install — Android (APK)
 
-**[Download APK](https://github.com/enoshvarma/ahuva-it-support-assistant/releases/download/android-latest/ahuva-it-support.apk)**
+**[⬇ Download the Android app](https://github.com/enoshvarma/ahuva-it-support-assistant/releases/download/android-latest/ahuva-it-support.apk)**
 
-1. Tap the link above on your Android phone to download
-2. Open the downloaded APK and tap **Install** (enable "Install from unknown sources" if prompted)
-3. Launch **Ahuva IT Support** from your app drawer
+1. Open the link on your Android phone — the APK downloads directly
+2. Open the downloaded file and tap **Install** (allow "Install unknown apps" for your browser if Android asks)
+3. Launch **Ahuva IT Support** from the app drawer
 
-The APK is rebuilt automatically from the latest code on every push.
+Requires Android 5.1 or newer with an up-to-date **Android System WebView** (updated automatically through the Play Store on almost every phone). Every build is tested on Android 9, 11, 13 and 15 before the download link is updated.
 
 ### What works in the Android app
 
-- Full graphical UI (same as desktop)
-- SSH connections with legacy algorithm support (old Cisco, Juniper, etc.)
-- Telnet connections with IAC negotiation
-- AI copilot (Anthropic, OpenAI, Google, Ollama, OpenRouter, Groq)
-- Network scanner (ping sweep, port scan, DNS reverse lookup, latency)
-- Wake-on-LAN (magic packet)
-- Traceroute
-- Device auto-detection (10+ vendors)
-- Switch baseline config generator (Cisco IOS/NX-OS, Juniper, FortiGate, MikroTik, Allied Telesis)
-- Command safety classification
-- Knowledge base
-- Error learning & Research Center
-- xterm.js terminal emulator with full ANSI/VT100 support
+Same UI as the desktop app, laid out for phones with **Session / Terminal / Copilot** tabs at the bottom.
 
-> **Note:** Packet capture (tshark) is not available on Android — use the AI copilot to get device-side capture commands instead.
+- SSH with legacy algorithm support (old Catalyst / Juniper / FortiGate) and keyboard-interactive login
+- Telnet with RFC 854 option negotiation
+- **USB serial console** with a USB-OTG console cable (FTDI, Prolific, CP210x, CH34x and Cisco USB-console / CDC-ACM)
+- Quick-key row for Tab, `?`, Ctrl+C, Ctrl+Z, Esc and arrow keys — the keys switch CLIs need that phone keyboards lack
+- AI copilot (Anthropic, OpenAI, Google, OpenRouter, Groq, Ollama on your LAN) with the knowledge base, device context and learned errors in every prompt
+- Device auto-detection, CLI-mode tracking and command safety classification
+- Restore point + config backup (saved wherever you choose — Downloads, Drive, …)
+- Network scanner (ping, port scan, NetBIOS/DNS names, vendor lookup), traceroute and Wake-on-LAN
+- Switch baseline config generator (Cisco IOS / NX-OS, Allied Telesis, MikroTik, Fortinet, Juniper, generic)
+- On-device packet capture guidance (the switch/firewall's own sniffer)
+- Knowledge base import, error learning and the weekly Research Center
+
+Not on Android: local Wireshark/tshark capture and nmap enrichment (they need a laptop).
+
+### Publishing to Google Play
+
+The same release also contains `ahuva-it-support.aab` — upload that file in the Play Console. Before your first Play upload, add two repository secrets (**Settings → Secrets and variables → Actions**) so builds are signed with your own upload key:
+
+| Secret | Value |
+|---|---|
+| `ANDROID_KEYSTORE_BASE64` | your upload keystore, base64-encoded |
+| `ANDROID_KEYSTORE_PASSWORD` | the keystore password |
+
+Until those are set, builds are signed with a public CI key that is fine for direct installs but must not be used on Google Play.
 
 ## Install — Android (Termux)
 
