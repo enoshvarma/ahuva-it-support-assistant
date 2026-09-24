@@ -19,9 +19,12 @@ dump() { # dump <name>: screenshot + visible texts
 
 report() { # print diagnostics after a failure
   echo "::group::Diagnostics"
-  cat "$OUT/am-start.txt" 2>/dev/null
+  cat "$OUT/am-start.txt"
+sleep 2; adb shell dumpsys window windows | grep -E "mCurrentFocus" | head -2 2>/dev/null
   adb logcat -d > "$OUT/logcat.txt" 2>/dev/null || true
-  grep -E "AndroidRuntime|FATAL|$PKG|ActivityManager" "$OUT/logcat.txt" | tail -80
+  adb shell dumpsys window windows | grep -E "mCurrentFocus|mFocusedApp" | head -5
+  grep -vE "uiautomator|RuntimeInit|CheckJNI|Shutting down VM|AndroidRuntime\( *[0-9]+\): *$" "$OUT/logcat.txt" \
+    | grep -E "FATAL|has died|Exception|ipfinder|ActivityManager" | tail -60
   echo "::endgroup::"
 }
 
@@ -39,6 +42,7 @@ adb shell pm path "$PKG" | grep -q package: || { echo "::error::APK did not inst
 # /sdcard can be read-only on old emulator images; /data/local/tmp always works for adb.
 TMPDIR_DEV=/data/local/tmp
 adb logcat -c || true
+adb shell input keyevent 82 >/dev/null 2>&1; adb shell input keyevent 4 >/dev/null 2>&1   # unlock, dismiss first-run overlays
 
 adb shell am start -W -n "$PKG/.ui.MainActivity" --ez autoscan true --es range 10.0.2.0/24 > "$OUT/am-start.txt" 2>&1
 cat "$OUT/am-start.txt"
