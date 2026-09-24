@@ -10,9 +10,9 @@ mkdir -p "$OUT"
 
 dump() { # dump <name>: screenshot + visible texts
   sleep "${2:-6}"
-  adb shell screencap -p "/sdcard/$1.png" && adb pull "/sdcard/$1.png" "$OUT/$1.png" >/dev/null
-  adb shell uiautomator dump "/sdcard/$1.xml" >/dev/null 2>&1
-  adb pull "/sdcard/$1.xml" "$OUT/$1.xml" >/dev/null 2>&1 || true
+  adb shell screencap -p "$TMPDIR_DEV/$1.png" && adb pull "$TMPDIR_DEV/$1.png" "$OUT/$1.png" >/dev/null
+  adb shell uiautomator dump "$TMPDIR_DEV/$1.xml" >/dev/null 2>&1
+  adb pull "$TMPDIR_DEV/$1.xml" "$OUT/$1.xml" >/dev/null 2>&1 || true
   echo "---- $1 ----"
   grep -o 'text="[^"]\+"' "$OUT/$1.xml" 2>/dev/null | sed 's/^text=//' | head -40 || true
 }
@@ -24,15 +24,20 @@ crashed() {
 }
 
 adb wait-for-device
-adb install -r -g "$APK" || adb install -r "$APK" || exit 1
+SDK=$(adb shell getprop ro.build.version.sdk | tr -d '\r')
+# -g (grant runtime permissions) only exists on API 23+; old adb versions still exit 0 on unknown options.
+if [ "${SDK:-0}" -ge 23 ]; then adb install -r -g "$APK"; else adb install -r "$APK"; fi
+adb shell pm path "$PKG" | grep -q package: || { echo "::error::APK did not install"; exit 1; }
+# /sdcard can be read-only on old emulator images; /data/local/tmp always works for adb.
+TMPDIR_DEV=/data/local/tmp
 adb logcat -c || true
 
 adb shell am start -W -n "$PKG/.ui.MainActivity" --ez autoscan true --es range 10.0.2.0/24
 dump main-scanning 4
 # Wait for the scan to finish (the status line says "devices online").
 for i in $(seq 1 30); do
-  adb shell uiautomator dump /sdcard/s.xml >/dev/null 2>&1
-  if adb shell cat /sdcard/s.xml 2>/dev/null | grep -q "devices online"; then break; fi
+  adb shell uiautomator dump $TMPDIR_DEV/s.xml >/dev/null 2>&1
+  if adb shell cat $TMPDIR_DEV/s.xml 2>/dev/null | grep -q "devices online"; then break; fi
   sleep 3
 done
 dump main-done 1
