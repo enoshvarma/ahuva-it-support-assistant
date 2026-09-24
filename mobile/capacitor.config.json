@@ -3,11 +3,13 @@
   "appName": "Ahuva IT Support",
   "webDir": "www",
   "server": {
-    "androidScheme": "https"
+    "androidScheme": "https",
+    "allowNavigation": ["*"]
   },
   "android": {
     "allowMixedContent": true,
-    "backgroundColor": "#07111f"
+    "backgroundColor": "#07111f",
+    "webContentsDebuggingEnabled": false
   },
   "plugins": {
     "StatusBar": {
@@ -17,6 +19,14 @@
     "Keyboard": {
       "resize": "ionic",
       "resizeOnFullScreen": true
+    },
+    "SplashScreen": {
+      "launchAutoHide": true,
+      "backgroundColor": "#07111f",
+      "showSpinner": false,
+      "androidScaleType": "CENTER_CROP",
+      "splashFullScreen": true,
+      "splashImmersive": true
     }
   }
 }

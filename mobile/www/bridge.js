@@ -426,7 +426,7 @@
         if (!res.ok) return { available: false };
         const data = await res.json();
         const remote = String(data.tag_name || "").replace(/^v/, "");
-        const current = "1.7.0";
+        const current = "1.8.0";
         if (remote && remote !== current) return { available: true, version: remote, url: data.html_url };
         return { available: false };
       } catch { return { available: false }; }
