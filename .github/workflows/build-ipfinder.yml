@@ -71,7 +71,13 @@ jobs:
         run: ./gradlew --no-daemon testReleaseUnitTest
 
       - name: Lint
-        run: ./gradlew --no-daemon lintRelease
+        run: |
+          set +e
+          ./gradlew --no-daemon lintRelease
+          code=$?
+          report=app/build/intermediates/lint_intermediate_text_report/release/lintReportRelease/lint-results-release.txt
+          [ -f "$report" ] && cat "$report"
+          exit $code
 
       - name: Build release APK
         env:
