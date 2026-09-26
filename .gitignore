@@ -77,3 +77,6 @@ mobile/www/
 *.keystore
 *.jks
 !mobile/android/app/ci-fallback.keystore
+!gps-camera/app/sarathi-ci.keystore
+gps-camera/.gradle/
+gps-camera/local.properties

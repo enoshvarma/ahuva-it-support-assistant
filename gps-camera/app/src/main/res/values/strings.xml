@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">Sarathi GPS Camera</string>
+    <string name="default_project">Project Sarathi</string>
+    <string name="waiting_gps">Waiting for GPS fix…</string>
+    <string name="permissions_needed">Camera and location permissions are needed to take geo-tagged photos.</string>
+    <string name="saved">Photo saved to Pictures/ProjectSarathi</string>
+    <string name="save_failed">Could not save the photo</string>
+    <string name="no_photo_yet">No photo taken yet</string>
+    <string name="settings">Stamp settings</string>
+    <string name="project_name">Project name</string>
+    <string name="note">Note (optional)</string>
+    <string name="show_map">Show map thumbnail</string>
+    <string name="save">Save</string>
+    <string name="cancel">Cancel</string>
+    <string name="open_settings">Open settings</string>
+</resources>

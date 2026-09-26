@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#FF000000"
+    android:orientation="vertical">
+
+    <!-- Top toolbar -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="52dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingLeft="8dp"
+        android:paddingRight="8dp">
+
+        <ImageButton
+            android:id="@+id/btnFlash"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Flash"
+            android:src="@drawable/ic_flash_off" />
+
+        <TextView
+            android:id="@+id/txtGpsStatus"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginLeft="8dp"
+            android:layout_marginRight="8dp"
+            android:background="@drawable/chip_bg"
+            android:ellipsize="end"
+            android:gravity="center"
+            android:maxLines="1"
+            android:paddingLeft="12dp"
+            android:paddingTop="6dp"
+            android:paddingRight="12dp"
+            android:paddingBottom="6dp"
+            android:text="@string/waiting_gps"
+            android:textColor="#FFFFB74D"
+            android:textSize="13sp" />
+
+        <ImageButton
+            android:id="@+id/btnSwitch"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Switch camera"
+            android:src="@drawable/ic_switch_camera" />
+
+        <ImageButton
+            android:id="@+id/btnSettings"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/settings"
+            android:src="@drawable/ic_tune" />
+    </LinearLayout>
+
+    <!-- Camera preview (4:3, exactly what gets captured) with the live stamp on top -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <com.projectsarathi.gpscamera.AspectFrameLayout
+            android:id="@+id/previewBox"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center">
+
+            <androidx.camera.view.PreviewView
+                android:id="@+id/previewView"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent" />
+
+            <com.projectsarathi.gpscamera.StampView
+                android:id="@+id/stampView"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="bottom" />
+
+            <View
+                android:id="@+id/flashOverlay"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:alpha="0"
+                android:background="#FFFFFFFF" />
+        </com.projectsarathi.gpscamera.AspectFrameLayout>
+
+        <TextView
+            android:id="@+id/txtPermission"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:gravity="center"
+            android:padding="24dp"
+            android:text="@string/permissions_needed"
+            android:textColor="#FFFFFFFF"
+            android:textSize="16sp"
+            android:visibility="gone" />
+    </FrameLayout>
+
+    <!-- Zoom chips -->
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="8dp"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/zoom1"
+            style="@style/ZoomChip"
+            android:text="1x" />
+
+        <TextView
+            android:id="@+id/zoom2"
+            style="@style/ZoomChip"
+            android:text="2x" />
+
+        <TextView
+            android:id="@+id/zoom5"
+            style="@style/ZoomChip"
+            android:text="5x" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/txtBrand"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="6dp"
+        android:text="@string/default_project"
+        android:textAllCaps="true"
+        android:textColor="#FFFF8F00"
+        android:textSize="13sp"
+        android:textStyle="bold" />
+
+    <!-- Bottom controls -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="112dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingLeft="24dp"
+        android:paddingRight="24dp">
+
+        <FrameLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1">
+
+            <ImageView
+                android:id="@+id/imgThumb"
+                android:layout_width="54dp"
+                android:layout_height="54dp"
+                android:background="@drawable/thumb_bg"
+                android:contentDescription="Last photo"
+                android:padding="2dp"
+                android:scaleType="centerCrop"
+                android:src="@drawable/ic_gallery" />
+        </FrameLayout>
+
+        <ImageButton
+            android:id="@+id/btnShutter"
+            android:layout_width="78dp"
+            android:layout_height="78dp"
+            android:background="@drawable/shutter"
+            android:contentDescription="Take photo" />
+
+        <FrameLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1">
+
+            <ImageButton
+                android:id="@+id/btnShare"
+                android:layout_width="54dp"
+                android:layout_height="54dp"
+                android:layout_gravity="right"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Share last photo"
+                android:src="@drawable/ic_share" />
+        </FrameLayout>
+    </LinearLayout>
+</LinearLayout>

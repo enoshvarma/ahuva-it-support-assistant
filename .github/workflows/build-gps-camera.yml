@@ -1,0 +1,120 @@
+name: Build Sarathi GPS Camera APK
+
+on:
+  push:
+    paths:
+      - 'gps-camera/**'
+      - '.github/workflows/build-gps-camera.yml'
+  pull_request:
+    paths:
+      - 'gps-camera/**'
+      - '.github/workflows/build-gps-camera.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gps-camera-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: gps-camera
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Build number
+        run: echo "SARATHI_VERSION_CODE=$((100 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
+
+      - name: Signing key
+        env:
+          KEYSTORE_B64: ${{ secrets.SARATHI_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.SARATHI_KEYSTORE_PASSWORD }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ] && [ -n "$KEYSTORE_PASSWORD" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/sarathi.keystore"
+            echo "SARATHI_KEYSTORE_FILE=$RUNNER_TEMP/sarathi.keystore" >> "$GITHUB_ENV"
+            echo "SARATHI_KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+          else
+            echo "::notice::Signing with the bundled CI key (fine for sideloading)."
+          fi
+
+      - name: Unit tests
+        run: ./gradlew --no-daemon testReleaseUnitTest
+
+      - name: Build release APK
+        run: ./gradlew --no-daemon assembleRelease
+
+      - name: Verify and collect
+        run: |
+          set -e
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          mkdir -p dist
+          cp app/build/outputs/apk/release/app-release.apk dist/sarathi-gps-camera.apk
+          "$BT/apksigner" verify --print-certs dist/sarathi-gps-camera.apk
+          "$BT/aapt2" dump badging dist/sarathi-gps-camera.apk | grep -E "^package|sdkVersion|targetSdkVersion"
+          (cd dist && sha256sum sarathi-gps-camera.apk > SHA256SUMS.txt)
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sarathi-gps-camera
+          path: gps-camera/dist/
+          retention-days: 90
+
+  device-test:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - api-level: 21
+            target: default
+          - api-level: 26
+            target: google_apis
+          - api-level: 30
+            target: google_apis
+          - api-level: 35
+            target: google_apis
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: sarathi-gps-camera
+          path: dist
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Take a geo-tagged photo on Android API ${{ matrix.api-level }}
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ matrix.api-level }}
+          target: ${{ matrix.target }}
+          arch: x86_64
+          ram-size: 3072M
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back emulated -camera-front emulated -no-snapshot
+          script: bash gps-camera/test/emulator-smoke.sh dist/sarathi-gps-camera.apk results ${{ matrix.api-level }}
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: device-api${{ matrix.api-level }}
+          path: results
+          if-no-files-found: ignore

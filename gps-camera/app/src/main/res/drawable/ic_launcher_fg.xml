@@ -1,0 +1,13 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <!-- camera body -->
+    <path android:fillColor="#FFFFFFFF"
+        android:pathData="M34,42h8l4,-6h16l4,6h8a4,4 0,0 1,4 4v24a4,4 0,0 1,-4 4H34a4,4 0,0 1,-4 -4V46a4,4 0,0 1,4 -4z"/>
+    <!-- lens -->
+    <path android:fillColor="#FF0D1B2A"
+        android:pathData="M54,58m-11,0a11,11 0,1 1,22 0a11,11 0,1 1,-22 0"/>
+    <!-- map pin inside the lens -->
+    <path android:fillColor="#FFFF8F00"
+        android:pathData="M54,50c-3.3,0 -6,2.7 -6,6c0,4.5 6,11 6,11s6,-6.5 6,-11c0,-3.3 -2.7,-6 -6,-6zM54,58.2c-1.2,0 -2.2,-1 -2.2,-2.2s1,-2.2 2.2,-2.2s2.2,1 2.2,2.2s-1,2.2 -2.2,2.2z"/>
+</vector>
