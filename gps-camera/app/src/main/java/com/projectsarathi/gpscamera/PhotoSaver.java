@@ -48,7 +48,17 @@ public final class PhotoSaver {
     /** Blocking. Returns a content:// Uri that other apps can open plus a thumbnail, or throws. */
     public static Saved process(Context context, byte[] jpeg, int rotationDegrees, boolean mirror,
                               StampData stamp, Location location) throws Exception {
-        Bitmap photo = decode(jpeg, rotationDegrees, mirror);
+        return processBitmap(context, decode(jpeg, rotationDegrees, mirror), stamp, location);
+    }
+
+    /** Same as {@link #process} for an already-decoded, upright bitmap (e.g. a preview frame). */
+    public static Saved processBitmap(Context context, Bitmap photo, StampData stamp,
+                                      Location location) throws Exception {
+        if (!photo.isMutable()) {
+            Bitmap copy = photo.copy(Bitmap.Config.ARGB_8888, true);
+            photo.recycle();
+            photo = copy;
+        }
         Canvas canvas = new Canvas(photo);
         new StampRenderer().draw(canvas, photo.getWidth(), photo.getHeight(), stamp);
         int tw = 240;

@@ -61,6 +61,7 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class MainActivity extends AppCompatActivity implements LocationTracker.Callback {
 
@@ -384,9 +385,22 @@ public class MainActivity extends AppCompatActivity implements LocationTracker.C
         flashOverlay.setAlpha(0.8f);
         flashOverlay.animate().alpha(0f).setDuration(250).start();
 
+        // Some devices (and old emulators) never deliver the full-resolution JPEG. If the capture
+        // fails or takes too long, save the current preview frame instead so a photo always lands.
+        final AtomicBoolean handled = new AtomicBoolean(false);
+        final Runnable fallback = () -> {
+            if (handled.compareAndSet(false, true)) savePreviewFrame(stamp, loc);
+        };
+        main.postDelayed(fallback, 8000);
+
         imageCapture.takePicture(worker, new ImageCapture.OnImageCapturedCallback() {
             @Override
             public void onCaptureSuccess(@NonNull ImageProxy image) {
+                if (!handled.compareAndSet(false, true)) {
+                    image.close();
+                    return;
+                }
+                main.removeCallbacks(fallback);
                 byte[] jpeg;
                 int rotation;
                 try {
@@ -398,7 +412,7 @@ public class MainActivity extends AppCompatActivity implements LocationTracker.C
                     buf.get(jpeg);
                 } catch (Exception e) {
                     image.close();
-                    onSaveFailed(e);
+                    main.post(() -> savePreviewFrame(stamp, loc));
                     return;
                 }
                 image.close();
@@ -412,6 +426,32 @@ public class MainActivity extends AppCompatActivity implements LocationTracker.C
 
             @Override
             public void onError(@NonNull ImageCaptureException e) {
+                main.post(() -> {
+                    main.removeCallbacks(fallback);
+                    if (handled.compareAndSet(false, true)) savePreviewFrame(stamp, loc);
+                });
+            }
+        });
+    }
+
+    /** Main thread. Grabs what the viewfinder shows and stamps it. */
+    private void savePreviewFrame(StampData stamp, Location loc) {
+        final Bitmap frame;
+        try {
+            frame = previewView.getBitmap();
+        } catch (Throwable e) {
+            onSaveFailed(e);
+            return;
+        }
+        if (frame == null) {
+            onSaveFailed(new IllegalStateException("Camera did not return an image"));
+            return;
+        }
+        worker.execute(() -> {
+            try {
+                PhotoSaver.Saved saved = PhotoSaver.processBitmap(MainActivity.this, frame, stamp, loc);
+                main.post(() -> onSaved(saved));
+            } catch (Throwable e) {
                 onSaveFailed(e);
             }
         });
