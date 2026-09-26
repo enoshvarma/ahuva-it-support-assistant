@@ -15,6 +15,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
+import android.util.Log;
 import android.util.Size;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
@@ -65,6 +66,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class MainActivity extends AppCompatActivity implements LocationTracker.Callback {
 
+    private static final String TAG = "SarathiCam";
     private static final int REQ_PERMS = 42;
     private static final String PREFS = "stamp";
 
@@ -388,7 +390,9 @@ public class MainActivity extends AppCompatActivity implements LocationTracker.C
         // Some devices (and old emulators) never deliver the full-resolution JPEG. If the capture
         // fails or takes too long, save the current preview frame instead so a photo always lands.
         final AtomicBoolean handled = new AtomicBoolean(false);
+        Log.i(TAG, "Capture requested");
         final Runnable fallback = () -> {
+            Log.w(TAG, "No image from ImageCapture after 8 s, using preview frame");
             if (handled.compareAndSet(false, true)) savePreviewFrame(stamp, loc);
         };
         main.postDelayed(fallback, 8000);
@@ -426,6 +430,7 @@ public class MainActivity extends AppCompatActivity implements LocationTracker.C
 
             @Override
             public void onError(@NonNull ImageCaptureException e) {
+                Log.w(TAG, "ImageCapture failed, using preview frame", e);
                 main.post(() -> {
                     main.removeCallbacks(fallback);
                     if (handled.compareAndSet(false, true)) savePreviewFrame(stamp, loc);
@@ -443,6 +448,7 @@ public class MainActivity extends AppCompatActivity implements LocationTracker.C
             onSaveFailed(e);
             return;
         }
+        Log.i(TAG, "Preview frame: " + (frame == null ? "null" : frame.getWidth() + "x" + frame.getHeight()));
         if (frame == null) {
             onSaveFailed(new IllegalStateException("Camera did not return an image"));
             return;
@@ -458,6 +464,7 @@ public class MainActivity extends AppCompatActivity implements LocationTracker.C
     }
 
     private void onSaved(PhotoSaver.Saved saved) {
+        Log.i(TAG, "Saved " + saved.uri);
         capturing = false;
         btnShutter.setEnabled(true);
         lastPhoto = saved.uri;
@@ -466,6 +473,7 @@ public class MainActivity extends AppCompatActivity implements LocationTracker.C
     }
 
     private void onSaveFailed(Throwable e) {
+        Log.e(TAG, "Save failed", e);
         main.post(() -> {
             capturing = false;
             btnShutter.setEnabled(true);

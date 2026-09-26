@@ -18,7 +18,8 @@ diag() {
   echo "--- app log / crashes ---"
   adb logcat -d > "$OUT/logcat.txt" 2>&1
   grep -E -A 25 "FATAL EXCEPTION|AndroidRuntime" "$OUT/logcat.txt" | head -80
-  grep -iE "gpscamera|CameraX|Camera2CameraImpl" "$OUT/logcat.txt" | tail -40
+  grep -E "SarathiCam" "$OUT/logcat.txt" | tail -40
+  grep -iE "gpscamera|CameraX|Camera2CameraImpl" "$OUT/logcat.txt" | grep -v "java.lang.Throwable\|\tat " | tail -25
 }
 fail() { echo "FAIL: $*" | tee "$OUT/result.txt"; diag; exit 1; }
 
