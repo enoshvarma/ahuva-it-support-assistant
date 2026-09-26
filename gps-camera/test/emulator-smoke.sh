@@ -8,6 +8,9 @@ API="$3"
 PKG=com.projectsarathi.gpscamera
 mkdir -p "$OUT"
 diag() {
+  echo "--- install / start output ---"
+  cat "$OUT/install.txt" "$OUT/start.txt" 2>/dev/null
+  adb shell pm list packages 2>/dev/null | grep -i sarathi || echo "(package not installed)"
   echo "--- foreground window ---"
   adb shell dumpsys window windows 2>/dev/null | grep -E "mCurrentFocus|mFocusedApp" | head -5
   echo "--- views on screen ---"
