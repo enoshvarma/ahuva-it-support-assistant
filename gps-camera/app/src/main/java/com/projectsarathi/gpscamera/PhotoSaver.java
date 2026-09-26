@@ -161,8 +161,14 @@ public final class PhotoSaver {
             }
         }
         // Android 9 and older: write the file into the public Pictures folder and index it.
+        // If shared storage is missing or not writable (no SD card, permission denied), keep the
+        // photo in the app's own folder rather than losing it.
         File dir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), ALBUM);
-        if (!dir.isDirectory() && !dir.mkdirs()) throw new IllegalStateException("Cannot create " + dir);
+        if (!dir.isDirectory() && !dir.mkdirs()) {
+            File own = context.getExternalFilesDir(Environment.DIRECTORY_PICTURES);
+            dir = own != null ? own : new File(context.getFilesDir(), "Pictures");
+            if (!dir.isDirectory() && !dir.mkdirs()) throw new IllegalStateException("Cannot create " + dir);
+        }
         File dest = new File(dir, name + ".jpg");
         int i = 1;
         while (dest.exists()) dest = new File(dir, name + "_" + (i++) + ".jpg");

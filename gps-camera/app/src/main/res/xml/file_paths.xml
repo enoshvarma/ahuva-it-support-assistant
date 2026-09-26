@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths>
     <external-path name="pictures" path="." />
+    <external-files-path name="own_pictures" path="." />
+    <files-path name="internal_pictures" path="Pictures/" />
     <cache-path name="cache" path="." />
 </paths>

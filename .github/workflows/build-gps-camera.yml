@@ -109,6 +109,7 @@ jobs:
           arch: x86_64
           ram-size: 3072M
           disable-animations: true
+          sdcard-path-or-size: 256M
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back emulated -camera-front emulated -no-snapshot
           script: bash gps-camera/test/emulator-smoke.sh dist/sarathi-gps-camera.apk results ${{ matrix.api-level }}
 
