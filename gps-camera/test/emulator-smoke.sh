@@ -24,7 +24,12 @@ fail() { echo "FAIL: $*" | tee "$OUT/result.txt"; diag; exit 1; }
 
 adb wait-for-device
 adb shell input keyevent 82 || true
-adb install -r -g "$APK" > "$OUT/install.txt" 2>&1 || adb install -r "$APK" >> "$OUT/install.txt" 2>&1 || fail "install"
+# "-g" (grant all permissions) only exists on Android 6+; Android 5 prints an error but exits 0,
+# so check that the package really got installed and retry without it.
+installed() { adb shell pm list packages 2>/dev/null | tr -d '\r' | grep -qx "package:$PKG"; }
+adb install -r -g "$APK" > "$OUT/install.txt" 2>&1 || true
+installed || adb install -r "$APK" >> "$OUT/install.txt" 2>&1 || true
+installed || fail "install"
 for p in CAMERA ACCESS_FINE_LOCATION ACCESS_COARSE_LOCATION WRITE_EXTERNAL_STORAGE READ_EXTERNAL_STORAGE; do
   adb shell pm grant $PKG android.permission.$p >/dev/null 2>&1 || true
 done
