@@ -42,27 +42,47 @@ adb shell am start -W -n $PKG/.MainActivity > "$OUT/start.txt" 2>&1 || fail "lau
 for i in $(seq 1 20); do geo; sleep 2; done
 adb exec-out screencap -p > "$OUT/screen-before.png" 2>/dev/null || true
 
-# Find the shutter button in the view hierarchy and tap it. Old emulators (API 21) cannot
-# dump the hierarchy, so fall back to the volume-down key, which the app also treats as a shutter.
-BOUNDS=""
-if adb shell uiautomator dump /data/local/tmp/ui.xml >/dev/null 2>&1 \
-   && adb pull /data/local/tmp/ui.xml "$OUT/ui.xml" >/dev/null 2>&1; then
-  BOUNDS=$(grep -o 'resource-id="'$PKG':id/btnShutter"[^>]*bounds="\[[0-9]*,[0-9]*\]\[[0-9]*,[0-9]*\]"' "$OUT/ui.xml" | grep -o 'bounds="[^"]*"' | head -1)
-fi
-if [ -n "$BOUNDS" ]; then
-  read -r X1 Y1 X2 Y2 <<<"$(echo "$BOUNDS" | tr -c '0-9' ' ')"
-  echo "Tapping shutter at $(( (X1 + X2) / 2 )),$(( (Y1 + Y2) / 2 ))"
-  adb shell input tap $(( (X1 + X2) / 2 )) $(( (Y1 + Y2) / 2 ))
-else
-  echo "No view hierarchy; pressing volume-down as shutter"
-  adb shell input keyevent 25
-fi
+# Emulator system apps sometimes crash on boot and leave a "System UI has stopped" dialog on
+# top that swallows input. Suppress/close those, bring our activity to the front and press the
+# shutter; retry up to three times.
+adb shell settings put global hide_error_dialogs 1 >/dev/null 2>&1 || true
+shoot() {
+  adb shell am broadcast -a android.intent.action.CLOSE_SYSTEM_DIALOGS >/dev/null 2>&1 || true
+  adb shell am start -n $PKG/.MainActivity >/dev/null 2>&1 || true
+  sleep 3
+  BOUNDS=""
+  if adb shell uiautomator dump /data/local/tmp/ui.xml >/dev/null 2>&1 \
+     && adb pull /data/local/tmp/ui.xml "$OUT/ui.xml" >/dev/null 2>&1; then
+    if grep -q 'android:id/aerr_close' "$OUT/ui.xml"; then
+      B=$(grep -o 'resource-id="android:id/aerr_close"[^>]*bounds="[^"]*"' "$OUT/ui.xml" | grep -o 'bounds="[^"]*"' | head -1)
+      read -r X1 Y1 X2 Y2 <<<"$(echo "$B" | tr -c '0-9' ' ')"
+      echo "Closing a system error dialog"
+      adb shell input tap $(( (X1 + X2) / 2 )) $(( (Y1 + Y2) / 2 ))
+      sleep 2
+      adb shell uiautomator dump /data/local/tmp/ui.xml >/dev/null 2>&1 && adb pull /data/local/tmp/ui.xml "$OUT/ui.xml" >/dev/null 2>&1
+    fi
+    BOUNDS=$(grep -o 'resource-id="'$PKG':id/btnShutter"[^>]*bounds="\[[0-9]*,[0-9]*\]\[[0-9]*,[0-9]*\]"' "$OUT/ui.xml" | grep -o 'bounds="[^"]*"' | head -1)
+  fi
+  if [ -n "$BOUNDS" ]; then
+    read -r X1 Y1 X2 Y2 <<<"$(echo "$BOUNDS" | tr -c '0-9' ' ')"
+    echo "Tapping shutter at $(( (X1 + X2) / 2 )),$(( (Y1 + Y2) / 2 ))"
+    adb shell input tap $(( (X1 + X2) / 2 )) $(( (Y1 + Y2) / 2 ))
+  else
+    echo "No view hierarchy; pressing volume-down as shutter"
+    adb shell input keyevent 25
+  fi
+}
 
 FOUND=""
-for i in $(seq 1 30); do
-  sleep 2
-  FOUND=$(adb shell "ls /sdcard/Pictures/ProjectSarathi/ 2>/dev/null" | tr -d '\r' | grep -m1 '\.jpg$' || true)
+for attempt in 1 2 3; do
+  shoot
+  for i in $(seq 1 15); do
+    sleep 2
+    FOUND=$(adb shell "ls /sdcard/Pictures/ProjectSarathi/ 2>/dev/null" | tr -d '\r' | grep -m1 '\.jpg$' || true)
+    [ -n "$FOUND" ] && break
+  done
   [ -n "$FOUND" ] && break
+  echo "Attempt $attempt: no photo yet; focus is $(adb shell dumpsys window windows 2>/dev/null | grep -m1 mCurrentFocus)"
 done
 adb exec-out screencap -p > "$OUT/screen-after.png" 2>/dev/null || true
 adb logcat -d > "$OUT/logcat.txt" 2>&1
