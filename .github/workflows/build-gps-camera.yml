@@ -119,3 +119,51 @@ jobs:
           name: device-api${{ matrix.api-level }}
           path: results
           if-no-files-found: ignore
+
+  # Permanent download link: every tested push replaces the APK on the gps-camera-latest release.
+  # https://github.com/<owner>/<repo>/releases/download/gps-camera-latest/sarathi-gps-camera.apk
+  publish:
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    needs: [build, device-test]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: gps-camera-publish
+      cancel-in-progress: false
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: sarathi-gps-camera
+          path: dist
+
+      - name: Publish APK to the gps-camera-latest release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -e
+          BUILD=$((100 + GITHUB_RUN_NUMBER))
+          {
+            echo "## Project Sarathi GPS Camera — build $BUILD"
+            echo
+            echo "**Download:** tap \`sarathi-gps-camera.apk\` below, open it and tap **Install** (allow *Install unknown apps* if asked)."
+            echo
+            echo "Every photo gets a **PROJECT SARATHI** stamp: map, address, latitude/longitude, Plus Code, date/time with GMT offset, altitude and accuracy, plus GPS EXIF tags. Photos are saved to *Pictures/ProjectSarathi*."
+            echo
+            echo "Works on Android 5.0 and newer. Before publishing, this build took a real geo-tagged photo on Android 5.0, 8.0, 11 and 15 emulators."
+            echo
+            echo "Built from \`${GITHUB_SHA::7}\` on \`${GITHUB_REF_NAME}\`."
+            echo
+            echo '```'
+            cat dist/SHA256SUMS.txt
+            echo '```'
+          } > notes.md
+          if gh release view gps-camera-latest >/dev/null 2>&1; then
+            gh release upload gps-camera-latest dist/sarathi-gps-camera.apk dist/SHA256SUMS.txt --clobber
+            gh release edit gps-camera-latest --title "Project Sarathi GPS Camera (build $BUILD)" --notes-file notes.md
+          else
+            gh release create gps-camera-latest dist/sarathi-gps-camera.apk dist/SHA256SUMS.txt \
+              --target "$GITHUB_SHA" --title "Project Sarathi GPS Camera (build $BUILD)" --notes-file notes.md --latest=false
+          fi
+          echo "Direct download: https://github.com/${GITHUB_REPOSITORY}/releases/download/gps-camera-latest/sarathi-gps-camera.apk" >> "$GITHUB_STEP_SUMMARY"
