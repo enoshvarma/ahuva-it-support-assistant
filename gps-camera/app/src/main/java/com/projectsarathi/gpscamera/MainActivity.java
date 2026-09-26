@@ -16,6 +16,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
 import android.util.Size;
+import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
 import android.view.View;
@@ -358,6 +359,17 @@ public class MainActivity extends AppCompatActivity implements LocationTracker.C
             }
             return true;
         });
+    }
+
+    /** Volume keys and the hardware camera key work as a shutter, like most camera apps. */
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN || keyCode == KeyEvent.KEYCODE_VOLUME_UP
+                || keyCode == KeyEvent.KEYCODE_CAMERA) {
+            if (event.getRepeatCount() == 0) takePhoto();
+            return true;
+        }
+        return super.onKeyDown(keyCode, event);
     }
 
     private void takePhoto() {

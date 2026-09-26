@@ -7,7 +7,17 @@ OUT="$2"
 API="$3"
 PKG=com.projectsarathi.gpscamera
 mkdir -p "$OUT"
-fail() { echo "FAIL: $*" | tee "$OUT/result.txt"; adb logcat -d > "$OUT/logcat.txt" 2>&1; exit 1; }
+diag() {
+  echo "--- foreground window ---"
+  adb shell dumpsys window windows 2>/dev/null | grep -E "mCurrentFocus|mFocusedApp" | head -5
+  echo "--- views on screen ---"
+  [ -f "$OUT/ui.xml" ] && grep -o 'resource-id="[^"]*"\|text="[^"]\+"' "$OUT/ui.xml" | head -40
+  echo "--- app log / crashes ---"
+  adb logcat -d > "$OUT/logcat.txt" 2>&1
+  grep -E -A 25 "FATAL EXCEPTION|AndroidRuntime" "$OUT/logcat.txt" | head -80
+  grep -iE "gpscamera|CameraX|Camera2CameraImpl" "$OUT/logcat.txt" | tail -40
+}
+fail() { echo "FAIL: $*" | tee "$OUT/result.txt"; diag; exit 1; }
 
 adb wait-for-device
 adb shell input keyevent 82 || true
@@ -29,13 +39,21 @@ adb shell am start -W -n $PKG/.MainActivity > "$OUT/start.txt" 2>&1 || fail "lau
 for i in $(seq 1 20); do geo; sleep 2; done
 adb exec-out screencap -p > "$OUT/screen-before.png" 2>/dev/null || true
 
-# Find the shutter button in the view hierarchy and tap it.
-adb shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1
-adb pull /sdcard/ui.xml "$OUT/ui.xml" >/dev/null 2>&1 || fail "uiautomator dump"
-BOUNDS=$(grep -o 'resource-id="'$PKG':id/btnShutter"[^>]*bounds="\[[0-9]*,[0-9]*\]\[[0-9]*,[0-9]*\]"' "$OUT/ui.xml" | grep -o 'bounds="[^"]*"' | head -1)
-[ -n "$BOUNDS" ] || fail "shutter button not on screen"
-read -r X1 Y1 X2 Y2 <<<"$(echo "$BOUNDS" | tr -c '0-9' ' ')"
-adb shell input tap $(( (X1 + X2) / 2 )) $(( (Y1 + Y2) / 2 ))
+# Find the shutter button in the view hierarchy and tap it. Old emulators (API 21) cannot
+# dump the hierarchy, so fall back to the volume-down key, which the app also treats as a shutter.
+BOUNDS=""
+if adb shell uiautomator dump /data/local/tmp/ui.xml >/dev/null 2>&1 \
+   && adb pull /data/local/tmp/ui.xml "$OUT/ui.xml" >/dev/null 2>&1; then
+  BOUNDS=$(grep -o 'resource-id="'$PKG':id/btnShutter"[^>]*bounds="\[[0-9]*,[0-9]*\]\[[0-9]*,[0-9]*\]"' "$OUT/ui.xml" | grep -o 'bounds="[^"]*"' | head -1)
+fi
+if [ -n "$BOUNDS" ]; then
+  read -r X1 Y1 X2 Y2 <<<"$(echo "$BOUNDS" | tr -c '0-9' ' ')"
+  echo "Tapping shutter at $(( (X1 + X2) / 2 )),$(( (Y1 + Y2) / 2 ))"
+  adb shell input tap $(( (X1 + X2) / 2 )) $(( (Y1 + Y2) / 2 ))
+else
+  echo "No view hierarchy; pressing volume-down as shutter"
+  adb shell input keyevent 25
+fi
 
 FOUND=""
 for i in $(seq 1 30); do
@@ -53,4 +71,6 @@ fi
 adb pull "/sdcard/Pictures/ProjectSarathi/$FOUND" "$OUT/photo-api$API.jpg" >/dev/null 2>&1 || fail "pull photo"
 SIZE=$(stat -c %s "$OUT/photo-api$API.jpg")
 [ "$SIZE" -gt 20000 ] || fail "photo too small ($SIZE bytes)"
+diag >/dev/null 2>&1 || true
+echo "--- app log ---"; grep -iE "gpscamera" "$OUT/logcat.txt" | tail -15
 echo "PASS: API $API saved $FOUND ($SIZE bytes)" | tee "$OUT/result.txt"
