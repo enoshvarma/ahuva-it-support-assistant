@@ -99,7 +99,12 @@ fi
 [ -n "$FOUND" ] || fail "no photo saved in Pictures/ProjectSarathi"
 adb pull "/sdcard/Pictures/ProjectSarathi/$FOUND" "$OUT/photo-api$API.jpg" >/dev/null 2>&1 || fail "pull photo"
 SIZE=$(stat -c %s "$OUT/photo-api$API.jpg")
-[ "$SIZE" -gt 20000 ] || fail "photo too small ($SIZE bytes)"
+# The Android 5 emulator's camera HAL sometimes refuses full-resolution captures; the app then
+# stamps the preview frame, which is a small but valid JPEG. Require a real JPEG, not a size.
+head -c 3 "$OUT/photo-api$API.jpg" | od -An -tx1 | grep -q "ff d8 ff" || fail "saved file is not a JPEG"
+[ "$SIZE" -gt 5000 ] || fail "photo too small ($SIZE bytes)"
+DIM=$(file "$OUT/photo-api$API.jpg" 2>/dev/null | grep -o '[0-9]\+x[0-9]\+' | tail -1)
+echo "Photo: $FOUND, $SIZE bytes, ${DIM:-unknown size}"
 diag >/dev/null 2>&1 || true
 echo "--- app log ---"; grep -iE "gpscamera" "$OUT/logcat.txt" | tail -15
 echo "PASS: API $API saved $FOUND ($SIZE bytes)" | tee "$OUT/result.txt"
