@@ -9,6 +9,7 @@ import {
   IDENTITY, mul, translate, scale, rotateZ, withOcs, apply, xyScale, isMirrored,
   arcPoints, ellipsePoints, bulgePoints, nurbsPoints, fitPoints, cubicFitPoints, normAngle, setTolerance, setScale, segCount,
 } from './geom.js';
+import { satEdges } from './acis.js';
 import { plainText, mtextLines, mtextRuns, runsArePlain, repairByteSwapped } from './text.js';
 
 const MAX_DEPTH = 24;
@@ -468,7 +469,14 @@ export class Builder {
         break;
       case '3DSOLID':
       case 'REGION':
-      case 'BODY':
+      case 'BODY': {
+        const text = e.satText || (Array.isArray(e._acisPayloadLines) ? e._acisPayloadLines.join('\n') : null);
+        const edges = text ? satEdges(text) : [];
+        if (!edges.length) { this.warn(type); break; }
+        const st = this.style(e, ctx);
+        for (const pts of edges) this.emitPolyline(space, st, M, pts, false);
+        break;
+      }
       case 'SURFACE':
       case 'MESH':
       case 'OLE2FRAME':

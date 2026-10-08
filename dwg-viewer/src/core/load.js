@@ -72,6 +72,7 @@ function recoverDwgEntities(lib, data, db) {
   const n = lib.dwg_get_num_objects(data);
   const owners = new Map(); // polyline handle -> { kind, attrs, verts, faces }
   const result = [];
+  const sat = new Map(); // handle -> ACIS text
   const common = (obj, ent) => {
     const lay = lib.dwg_object_entity_get_layer_object_ref(ent);
     const col = lib.dwg_object_entity_get_color_object(ent) || {};
@@ -96,6 +97,30 @@ function recoverDwgEntities(lib, data, db) {
     const obj = lib.dwg_get_object(data, i);
     if (!obj) continue;
     const ft = lib.dwg_object_get_fixedtype(obj);
+    if (ft === T.DWG_TYPE_3DSOLID || ft === T.DWG_TYPE_REGION || ft === T.DWG_TYPE_BODY) {
+      // keep the ACIS text so the builder can draw a wireframe
+      try {
+        const tio = lib.dwg_object_to_entity_tio(obj);
+        const ptr = tio && lib.dwg_dynapi_entity_data(tio, 'acis_data');
+        const w = lib.wasmInstance;
+        if (ptr && w && w.HEAPU8) {
+          const heap = w.HEAPU8;
+          let end = ptr;
+          while (end < heap.length && heap[end] !== 0 && end - ptr < 64 * 1024 * 1024) end++;
+          const text = new TextDecoder('latin1').decode(heap.subarray(ptr, end));
+          if (text.length > 20) {
+            sat.set(hex(lib.dwg_object_get_handle_object(obj).value), text);
+            // libredwg-web only converts 3DSOLID; regions and bodies are added here
+            if (ft !== T.DWG_TYPE_3DSOLID) {
+              const ent = lib.dwg_object_to_entity(obj);
+              const c = common(obj, ent);
+              result.push({ owner: c.owner, entity: { ...c, type: ft === T.DWG_TYPE_REGION ? 'REGION' : 'BODY', satText: text } });
+            }
+          }
+        }
+      } catch { /* ignore */ }
+      continue;
+    }
     if (ft !== T.DWG_TYPE_POLYLINE_PFACE && ft !== T.DWG_TYPE_POLYLINE_MESH && ft !== T.DWG_TYPE_VERTEX_PFACE &&
         ft !== T.DWG_TYPE_VERTEX_PFACE_FACE && ft !== T.DWG_TYPE_VERTEX_MESH && ft !== T.DWG_TYPE_ARC_DIMENSION) continue;
     const ent = lib.dwg_object_to_entity(obj);
@@ -135,6 +160,7 @@ function recoverDwgEntities(lib, data, db) {
     const nv = rec.vertices.filter((v) => !v.faces).length;
     rec.vertices = rec.vertices.filter((v) => !v.faces || v.faces.every((k) => Math.abs(k) <= nv));
   }
+  result.sat = sat;
   return result;
 }
 
@@ -178,6 +204,11 @@ export async function parseDrawing(buffer, { wasmDir } = {}) {
       try { lib.dwg_free(ptr); } catch { /* ignore */ }
     }
     const doc = normalizeDwg(db);
+    if (extra.sat && extra.sat.size) {
+      const attach = (list) => { for (const e of list) if (e && extra.sat.has(e.handle)) e.satText = extra.sat.get(e.handle); };
+      for (const b of doc.blocks.values()) attach(b.entities);
+      attach(doc.model.entities);
+    }
     for (const { owner, entity } of extra) {
       const blk = owner === 'model' ? doc.model : doc.blockByHandle.get(owner);
       if (blk) blk.entities.push(entity);

@@ -5,6 +5,10 @@ const fs = require('fs');
 const { pathToFileURL } = require('url');
 
 const WWW = path.join(__dirname, '..', 'www');
+
+// AppImages cannot ship a setuid sandbox helper, and Ubuntu 24.04+ blocks the
+// user-namespace sandbox for unconfined apps; without this the app would not start.
+if (process.platform === 'linux' && process.env.APPIMAGE) app.commandLine.appendSwitch('no-sandbox');
 let win = null;
 let pageReady = false;
 const pendingFiles = [];
