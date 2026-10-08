@@ -18,6 +18,8 @@ self.onmessage = async (ev) => {
     };
     self.postMessage({ type: 'done', dl }, displayListTransfers(dl));
   } catch (e) {
-    self.postMessage({ type: 'error', message: (e && e.message) || String(e) });
+    let format = '';
+    try { format = new Uint8Array(buffer.byteLength ? buffer : new ArrayBuffer(0), 0, 2)[0] === 0x41 ? 'dwg' : 'dxf'; } catch { /* detached */ }
+    self.postMessage({ type: 'error', message: (e && e.message) || String(e), format });
   }
 };

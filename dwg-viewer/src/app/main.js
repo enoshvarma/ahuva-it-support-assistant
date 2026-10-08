@@ -56,6 +56,16 @@ function dialog(html) {
 $('dialog-ok').onclick = () => { $('dialog').hidden = true; };
 $('dialog').addEventListener('click', (e) => { if (e.target === $('dialog')) $('dialog').hidden = true; });
 
+// Chromium major version of the WebView / browser (0 when not Chromium).
+function chromeMajor() {
+  const m = /Chrom(?:e|ium)\/(\d+)/.exec(navigator.userAgent);
+  return m ? +m[1] : 0;
+}
+const OLD_ENGINE = chromeMajor() > 0 && chromeMajor() < 100;
+const UPDATE_HINT = /Android/.test(navigator.userAgent)
+  ? 'Your “Android System WebView” is out of date. Update “Android System WebView” and “Chrome” in the Play Store, then try again.'
+  : 'Your browser is out of date. Please update it and try again.';
+
 function esc(s) { return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]); }
 
 function fmtSize(n) {
@@ -219,7 +229,7 @@ async function openBuffer(name, buffer, opts = {}) {
     if (state.worker === worker) state.worker = null;
     if (m.type === 'error') {
       $('loading').hidden = true;
-      dialog(`<h3>Can't open this drawing</h3><p>${esc(m.message)}</p><p class="muted">File: ${esc(name)}</p>`);
+      dialog(`<h3>Can't open this drawing</h3><p>${esc(m.message)}</p>${OLD_ENGINE && m.format !== 'dxf' ? `<p><b>${esc(UPDATE_HINT)}</b></p>` : ''}<p class="muted">File: ${esc(name)}</p>`);
       if (!state.dl) showHome();
       return;
     }
@@ -1134,6 +1144,7 @@ if ('serviceWorker' in navigator && !isNative && !window.dwgDesktop && location.
 
 refreshRecent();
 console.info('DWG Viewer', VERSION, navigator.userAgent);
+if (OLD_ENGINE) setTimeout(() => toast(UPDATE_HINT, 7000), 800);
 
 // testing hook
 window.__dwgViewer = { state, renderer, openBuffer, selectSpace, setMode };

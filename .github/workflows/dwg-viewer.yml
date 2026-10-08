@@ -5,12 +5,10 @@ name: DWG Viewer
 #   Android APK · Windows installer + portable EXE · macOS DMG · Linux AppImage/DEB
 #   iOS (unsigned IPA for sideloading) · web app (PWA, also deployed to GitHub Pages from main)
 
+# push runs also report their checks on the pull request, so no separate
+# pull_request trigger (it would build everything twice)
 on:
   push:
-    paths:
-      - 'dwg-viewer/**'
-      - '.github/workflows/dwg-viewer.yml'
-  pull_request:
     paths:
       - 'dwg-viewer/**'
       - '.github/workflows/dwg-viewer.yml'
@@ -130,14 +128,21 @@ jobs:
           path: dwg-viewer/out
 
   android-device-test:
-    name: Android emulator test (API ${{ matrix.api }})
+    name: Android emulator test (API ${{ matrix.api }}${{ matrix.old && ', WebView 83' || '' }})
     needs: android
     runs-on: ubuntu-latest
     timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
-        api: [30, 34]
+        include:
+          # images with a current WebView, like real phones that get Play Store updates
+          - api: 33
+          - api: 34
+          # API 30 image ships the frozen 2020 WebView 83: the app must not crash and
+          # must tell the user to update Android System WebView
+          - api: 30
+            old: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
@@ -159,7 +164,7 @@ jobs:
           ram-size: 3072M
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot
-          script: bash dwg-viewer/test/android/run-on-emulator.sh dwg-viewer/out/DWG-Viewer.apk dwg-viewer/test/samples/example_2018.dwg emulator-results
+          script: EXPECT_OLD_WEBVIEW=${{ matrix.old && 1 || 0 }} bash dwg-viewer/test/android/run-on-emulator.sh dwg-viewer/out/DWG-Viewer.apk dwg-viewer/test/samples/example_2018.dwg emulator-results
       - uses: actions/upload-artifact@v4
         if: always()
         with:

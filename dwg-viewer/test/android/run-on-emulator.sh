@@ -47,7 +47,13 @@ if [ -n "$ID" ]; then
   echo "screen texts:"; grep -o 'text="[^"]*"' "$OUT/ui.xml" | sort -u | head -40
   sleep 3
   shot 2-drawing
-  if grep -q "Can.t open" "$OUT/ui.xml"; then echo "error dialog shown"; fail=1; fi
+  if grep -q "Can.t open" "$OUT/ui.xml"; then
+    if [ "${EXPECT_OLD_WEBVIEW:-0}" = 1 ] && grep -q "Android System WebView" "$OUT/ui.xml"; then
+      echo "outdated WebView: app shows the update instructions (expected on this image)"
+    else
+      echo "error dialog shown"; fail=1
+    fi
+  fi
 else
   echo "could not find the file in MediaStore; skipping intent test"
 fi
