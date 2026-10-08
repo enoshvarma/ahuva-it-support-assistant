@@ -73,15 +73,13 @@
         "ext": "dwg",
         "name": "AutoCAD Drawing",
         "description": "AutoCAD Drawing",
-        "role": "Viewer",
-        "icon": "build/icon"
+        "role": "Viewer"
       },
       {
         "ext": "dxf",
         "name": "Drawing Exchange Format",
         "description": "DXF Drawing",
-        "role": "Viewer",
-        "icon": "build/icon"
+        "role": "Viewer"
       }
     ],
     "win": {
