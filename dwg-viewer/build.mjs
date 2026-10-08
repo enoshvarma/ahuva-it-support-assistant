@@ -2,9 +2,10 @@
 import * as esbuild from 'esbuild';
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import { Resvg } from '@resvg/resvg-js';
 
-const root = path.dirname(new URL(import.meta.url).pathname);
+const root = path.dirname(fileURLToPath(import.meta.url));
 const out = path.join(root, 'www');
 const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
 const watch = process.argv.includes('--watch');

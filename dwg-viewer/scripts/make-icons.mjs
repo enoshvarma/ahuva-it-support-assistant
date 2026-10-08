@@ -1,11 +1,12 @@
 // Renders assets/logo.svg into every icon size needed by the desktop, Android and iOS builds.
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import { Resvg } from '@resvg/resvg-js';
 import pngToIco from 'png-to-ico';
 import png2icons from 'png2icons';
 
-const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const svg = fs.readFileSync(path.join(root, 'assets/logo.svg'));
 const render = (size, src = svg) => new Resvg(src, { fitTo: { mode: 'width', value: size } }).render().asPng();
 const write = (rel, buf) => { const f = path.join(root, rel); fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, buf); };
