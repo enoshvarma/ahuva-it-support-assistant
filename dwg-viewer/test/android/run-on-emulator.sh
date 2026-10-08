@@ -33,6 +33,7 @@ if [ -n "$ID" ]; then
   URI="content://media/external/file/$ID"
   adb shell am start -a android.intent.action.VIEW -d "$URI" -t image/vnd.dwg -n $PKG/.MainActivity --grant-read-uri-permission
   if wait_text "$NAME" 60; then echo "drawing opened OK ($URI)"; else echo "drawing did NOT open"; fail=1; fi
+  echo "screen texts:"; grep -o 'text="[^"]*"' "$OUT/ui.xml" | sort -u | head -40
   sleep 3
   shot 2-drawing
   if grep -q "Can.t open" "$OUT/ui.xml"; then echo "error dialog shown"; fail=1; fi
@@ -45,10 +46,18 @@ adb shell input keyevent KEYCODE_BACK
 sleep 2
 if wait_text "Open sample drawing" 20; then
   # tap the sample button using its bounds from the UI dump
-  B=$(grep -o 'text="Open sample drawing"[^>]*bounds="\[[0-9]*,[0-9]*\]\[[0-9]*,[0-9]*\]"' "$OUT/ui.xml" | grep -o '\[[0-9]*,[0-9]*\]\[[0-9]*,[0-9]*\]' | tr -d '[]' | tr ',' ' ')
-  if [ -n "$B" ]; then
-    set -- $B
-    adb shell input tap $(( ($1 + $3) / 2 )) $(( ($2 + $4) / 2 ))
+  XY=$(python3 - "$OUT/ui.xml" <<'PY'
+import re, sys
+xml = open(sys.argv[1], encoding='utf-8', errors='ignore').read()
+for node in re.findall(r'<node [^>]*>', xml):
+    if 'Open sample drawing' in node:
+        m = re.search(r'bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"', node)
+        if m:
+            a, b, c, d = map(int, m.groups()); print((a + c) // 2, (b + d) // 2); break
+PY
+)
+  if [ -n "$XY" ]; then
+    adb shell input tap $XY
     if wait_text "sample-house.dxf" 40; then echo "sample opened OK"; else echo "sample did NOT open"; fail=1; fi
     sleep 3
     shot 3-sample
@@ -58,6 +67,6 @@ fi
 adb shell pidof $PKG >/dev/null && echo "app still running" || { echo "app CRASHED"; fail=1; }
 adb logcat -d > "$OUT/logcat.txt" 2>/dev/null || true
 if grep -qE "FATAL EXCEPTION" "$OUT/logcat.txt"; then grep -E -A15 "FATAL EXCEPTION" "$OUT/logcat.txt" | head -40; fail=1; fi
-grep -iE "chromium.*(Uncaught|Error)" "$OUT/logcat.txt" | head -20
+grep -iE "Capacitor/Console|chromium.*(Uncaught|Error)|DWGViewer" "$OUT/logcat.txt" | tail -30
 echo "result: $([ $fail = 0 ] && echo PASS || echo FAIL)" | tee "$OUT/result.txt"
 exit $fail
