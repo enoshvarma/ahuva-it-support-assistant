@@ -5,7 +5,7 @@ import path from 'path';
 
 const [file, out, exe] = process.argv.slice(2);
 const args = exe ? [path.resolve(file)] : ['.', path.resolve(file)];
-const app = await electron.launch({ args: [...(process.getuid && process.getuid() === 0 ? ['--no-sandbox'] : []), ...args], executablePath: exe || undefined, env: { ...process.env, ELECTRON_DISABLE_SECURITY_WARNINGS: '1' } });
+const app = await electron.launch({ args: [...((process.getuid && process.getuid() === 0) || process.env.CI ? ['--no-sandbox'] : []), ...args], executablePath: exe || undefined, env: { ...process.env, ELECTRON_DISABLE_SECURITY_WARNINGS: '1' } });
 const win = await app.firstWindow();
 const errors = [];
 win.on('pageerror', (e) => errors.push(e.message));
