@@ -175,7 +175,6 @@ export class Renderer {
           const n = d[i++];
           path.moveTo(d[i], d[i + 1]);
           for (let k = 1; k < n; k++) path.lineTo(d[i + 2 * k], d[i + 2 * k + 1]);
-          path.closePath();
           i += 2 * n;
         }
         p.push(path);
@@ -296,9 +295,28 @@ export class Renderer {
     let ti = 0;
     let currentStage = batches.length ? batches[0].stage : 0;
     const flushTexts = (stage) => {
+      // text too small to read is drawn as faint bars, batched per colour
+      const bars = new Map();
+      setT();
+      const base = ctx.getTransform();
+      this._font = null; this._fill = null;
       while (ti < texts.length && texts[ti].stage <= stage) {
         const t = texts[ti++];
-        if (this.visible(t) && inView(t.bbox)) this.drawText(ctx, t, bg, s, dpr, view, setT);
+        if (!this.visible(t) || !inView(t.bbox)) continue;
+        const hpx = Math.hypot(t.Y[0], t.Y[1]) * s;
+        if (hpx < 3) {
+          if (hpx < 0.25) continue;
+          const q = this.textBar(t);
+          let p = bars.get(t.color);
+          if (!p) bars.set(t.color, (p = new Path2D()));
+          p.moveTo(q[0], q[1]); p.lineTo(q[2], q[3]); p.lineTo(q[4], q[5]); p.lineTo(q[6], q[7]);
+        } else this.drawText(ctx, t, bg, base);
+      }
+      if (bars.size) {
+        ctx.setTransform(base);
+        ctx.globalAlpha = 0.35;
+        for (const [c, p] of bars) { ctx.fillStyle = rgbCss(this.resolveColor(c, bg)); ctx.fill(p); }
+        ctx.globalAlpha = 1;
       }
     };
     for (const b of batches) {
@@ -444,27 +462,21 @@ export class Renderer {
     return L;
   }
 
-  drawText(ctx, t, bg, s, dpr, view, setT) {
-    const hpx = Math.hypot(t.Y[0], t.Y[1]) * s;
-    if (hpx < 1.2) {
-      // too small to read: draw a faint bar so dense text areas keep their shape
-      if (hpx > 0.25) {
-        const L = this.textLayout(t);
-        ctx.save();
-        setT();
-        ctx.transform(t.X[0], t.X[1], t.Y[0], t.Y[1], t.o[0], t.o[1]);
-        ctx.globalAlpha = 0.35;
-        ctx.fillStyle = rgbCss(this.resolveColor(t.color, bg));
-        const [ox, oy] = this.textOrigin(t, L);
-        ctx.fillRect(ox, oy - L.ys[L.ys.length - 1], L.maxW, 0.7 + L.ys[L.ys.length - 1]);
-        ctx.restore();
-      }
-      return;
-    }
+  // World-space quad covering a text item (used when it is too small to read).
+  textBar(t) {
+    if (t._bar) return t._bar;
     const L = this.textLayout(t);
-    ctx.save();
-    setT();
-    let X = t.X, Y = t.Y, o = t.o;
+    const [ox, oy] = this.textOrigin(t, L);
+    const y0 = oy - L.ys[L.ys.length - 1], y1 = oy + 0.7, x0 = ox, x1 = ox + L.maxW;
+    const P = (a, b) => [t.o[0] + t.X[0] * a + t.Y[0] * b, t.o[1] + t.X[1] * a + t.Y[1] * b];
+    t._bar = [...P(x0, y0), ...P(x1, y0), ...P(x1, y1), ...P(x0, y1)];
+    return t._bar;
+  }
+
+  drawText(ctx, t, bg, base) {
+    const L = this.textLayout(t);
+    let X = t.X, Y = t.Y;
+    const o = t.o;
     if (t.p2 && (t.ha === 3 || t.ha === 5)) {
       // aligned / fit text between two points
       const dx = t.p2[0] - o[0], dy = t.p2[1] - o[1];
@@ -479,26 +491,22 @@ export class Renderer {
         Y = [(-dy / dist) * yl * yk, (dx / dist) * yl * yk];
       }
     }
-    ctx.transform(X[0], X[1], Y[0], Y[1], o[0], o[1]);
     // canvas text is drawn y-down: flip, and scale font px to height units
     const k = 1 / (CAP_HEIGHT * FONT_PX);
-    ctx.scale(k, -k);
-    const base = rgbCss(this.resolveColor(t.color, bg));
-    ctx.textBaseline = 'alphabetic';
+    ctx.setTransform(base.multiply(new DOMMatrix([X[0] * k, X[1] * k, -Y[0] * k, -Y[1] * k, o[0], o[1]])));
+    const baseFill = rgbCss(this.resolveColor(t.color, bg));
     const [ox, oy] = this.textOrigin(t, L);
-    let lastFont = '', lastFill = '';
     for (let i = 0; i < L.lines.length; i++) {
       const line = L.lines[i];
       const lx = ox + this.lineShift(t, L, i);
       const ly = oy - L.ys[i];
       for (const p of line.pieces) {
-        if (p.font !== lastFont) { ctx.font = p.font; lastFont = p.font; }
-        const fill = p.c === null || p.c === undefined ? base : rgbCss(this.resolveColor(p.c, bg));
-        if (fill !== lastFill) { ctx.fillStyle = fill; lastFill = fill; }
+        if (p.font !== this._font) { ctx.font = p.font; this._font = p.font; }
+        const fill = p.c === null || p.c === undefined ? baseFill : rgbCss(this.resolveColor(p.c, bg));
+        if (fill !== this._fill) { ctx.fillStyle = fill; this._fill = fill; }
         ctx.fillText(p.t, (lx + p.x) / k, -ly / k);
       }
     }
-    ctx.restore();
   }
 
   // Origin (left end of first baseline) in text-height units, relative to the anchor.
