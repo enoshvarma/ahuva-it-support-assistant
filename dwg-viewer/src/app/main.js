@@ -1133,6 +1133,7 @@ if ('serviceWorker' in navigator && !isNative && !window.dwgDesktop && location.
 }
 
 refreshRecent();
+console.info('DWG Viewer', VERSION, navigator.userAgent);
 
 // testing hook
 window.__dwgViewer = { state, renderer, openBuffer, selectSpace, setMode };

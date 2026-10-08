@@ -16,6 +16,9 @@ wait_text() { # wait_text <text> <seconds>
 adb wait-for-device
 adb shell settings put global window_animation_scale 0 || true
 adb install -r "$APK" | tee "$OUT/install.txt"
+WV=$(adb shell dumpsys package com.google.android.webview 2>/dev/null | grep -m1 versionName | tr -d ' \r')
+[ -z "$WV" ] && WV=$(adb shell dumpsys package com.android.webview 2>/dev/null | grep -m1 versionName | tr -d ' \r')
+echo "WebView: $WV" | tee "$OUT/webview.txt"
 adb logcat -c || true
 
 echo "== launch"
