@@ -10,6 +10,29 @@ const out = path.join(root, 'www');
 const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
 const watch = process.argv.includes('--watch');
 
+function leb(buf, i) { let r = 0, s = 0, x; do { x = buf[i++]; r += (x & 0x7f) * 2 ** s; s += 7; } while (x & 0x80); return [r, i]; }
+function encLeb(n) { const o = []; do { let b = n & 0x7f; n = Math.floor(n / 128); if (n) b |= 0x80; o.push(b); } while (n); return o; }
+export function patchWasmInitialMemory(buf, pages) {
+  let i = 8;
+  while (i < buf.length) {
+    const id = buf[i];
+    let [size, j] = leb(buf, i + 1);
+    const end = j + size;
+    if (id === 5) {
+      let [count, k] = leb(buf, j);
+      if (count !== 1) return buf;
+      const flags = buf[k++];
+      let [initial, k2] = leb(buf, k);
+      const rest = buf.subarray(k2, end); // maximum (if any)
+      if (initial <= pages) return buf;
+      const body = Buffer.from([...encLeb(1), flags, ...encLeb(pages), ...rest]);
+      return Buffer.concat([buf.subarray(0, i), Buffer.from([5, ...encLeb(body.length)]), body, buf.subarray(end)]);
+    }
+    i = end;
+  }
+  return buf;
+}
+
 fs.rmSync(out, { recursive: true, force: true });
 fs.mkdirSync(path.join(out, 'icons'), { recursive: true });
 
@@ -32,7 +55,10 @@ const appJs = path.join(out, 'app.js');
 fs.writeFileSync(appJs, fs.readFileSync(appJs, 'utf8').replace(/new URL\("\.\/worker\.js",\s*import\.meta\.url\)/g, 'new URL("./worker.js",import.meta.url)'));
 
 for (const f of ['index.html', 'app.css']) fs.copyFileSync(path.join(root, 'src', f), path.join(out, f));
-fs.copyFileSync(path.join(root, 'node_modules/@mlightcad/libredwg-web/wasm/libredwg-web.wasm'), path.join(out, 'libredwg-web.wasm'));
+// The decoder is compiled with a 1 GB initial memory, which older Android
+// WebViews cannot reserve. Its static data and stack fit in the first 2 MB and
+// memory grows on demand, so start it at 16 MB.
+fs.writeFileSync(path.join(out, 'libredwg-web.wasm'), patchWasmInitialMemory(fs.readFileSync(path.join(root, 'node_modules/@mlightcad/libredwg-web/wasm/libredwg-web.wasm')), 256));
 fs.copyFileSync(path.join(root, 'assets/sample-house.dxf'), path.join(out, 'sample-house.dxf'));
 fs.copyFileSync(path.join(root, 'assets/logo.svg'), path.join(out, 'icons/logo.svg'));
 

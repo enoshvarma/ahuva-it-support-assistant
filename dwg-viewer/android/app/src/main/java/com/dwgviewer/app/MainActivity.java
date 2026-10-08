@@ -7,7 +7,10 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.provider.OpenableColumns;
 import android.util.Log;
+import android.webkit.RenderProcessGoneDetail;
+import android.webkit.WebView;
 import com.getcapacitor.BridgeActivity;
+import com.getcapacitor.WebViewListener;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
@@ -21,6 +24,19 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle savedInstanceState) {
         prepareIncomingIntent(getIntent());
         super.onCreate(savedInstanceState);
+        // If the WebView renderer dies (e.g. out of memory on a huge drawing),
+        // restart the screen instead of letting Android kill the whole app.
+        if (getBridge() != null) {
+            getBridge().addWebViewListener(new WebViewListener() {
+                @Override
+                public boolean onRenderProcessGone(WebView webView, RenderProcessGoneDetail detail) {
+                    Log.w(TAG, "WebView renderer gone, restarting");
+                    getIntent().setData(null);
+                    recreate();
+                    return true;
+                }
+            });
+        }
     }
 
     @Override

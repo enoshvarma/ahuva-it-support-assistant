@@ -10,7 +10,7 @@ import { parseDrawing, detectFormat } from '../src/core/load.js';
 import { aciToRgb } from '../src/core/aci.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const wasmDir = path.join(here, '../node_modules/@mlightcad/libredwg-web/wasm');
+const wasmDir = process.env.WASM_DIR || path.join(here, '../node_modules/@mlightcad/libredwg-web/wasm');
 let passed = 0, failed = 0;
 async function test(name, fn) {
   try { await fn(); passed++; console.log('  ok  ', name); } catch (e) { failed++; console.log('  FAIL', name, '\n       ', e.message); }
