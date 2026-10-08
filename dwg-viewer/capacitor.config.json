@@ -1,0 +1,23 @@
+{
+  "appId": "com.dwgviewer.app",
+  "appName": "DWG Viewer",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "backgroundColor": "#0b1220",
+    "webContentsDebuggingEnabled": false
+  },
+  "ios": {
+    "backgroundColor": "#0b1220",
+    "contentInset": "never"
+  },
+  "plugins": {
+    "StatusBar": {
+      "style": "DARK",
+      "backgroundColor": "#111a2c",
+      "overlaysWebView": false
+    }
+  }
+}

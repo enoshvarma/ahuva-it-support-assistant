@@ -1,0 +1,391 @@
+name: DWG Viewer
+
+# Builds DWG Viewer for every platform, tests it, and publishes the installers
+# to the "dwg-viewer-latest" GitHub release:
+#   Android APK · Windows installer + portable EXE · macOS DMG · Linux AppImage/DEB
+#   iOS (unsigned IPA for sideloading) · web app (PWA, also deployed to GitHub Pages from main)
+
+# push runs also report their checks on the pull request, so no separate
+# pull_request trigger (it would build everything twice)
+on:
+  push:
+    paths:
+      - 'dwg-viewer/**'
+      - '.github/workflows/dwg-viewer.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dwg-viewer-${{ github.ref }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    working-directory: dwg-viewer
+
+jobs:
+  test:
+    name: Tests (core + browser UI + desktop shell)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: dwg-viewer/package-lock.json
+      - name: Install
+        run: npm ci --no-audit --no-fund
+      - name: Core tests (geometry, text, every sample DWG/DXF)
+        run: node test/run-core-tests.mjs
+      - name: Build web app
+        run: npm run build
+      - name: Browser UI tests
+        run: |
+          npx playwright install --with-deps chromium
+          node test/ui-test.mjs ui-screenshots
+          node test/ui-interact.mjs ui-screenshots
+      - name: Desktop shell smoke test (Electron)
+        run: |
+          npm run icons
+          xvfb-run -a node test/electron-smoke.mjs test/samples/example_2018.dwg ui-screenshots/electron.png
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dwg-viewer-test-screenshots
+          path: dwg-viewer/ui-screenshots
+          if-no-files-found: ignore
+      - name: Package web app
+        run: |
+          mkdir -p out
+          cd www && zip -qr ../out/DWG-Viewer-web.zip .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dwg-viewer-web
+          path: |
+            dwg-viewer/out/DWG-Viewer-web.zip
+            dwg-viewer/www
+
+  android:
+    name: Android APK
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: dwg-viewer/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: temurin
+      - name: Version code
+        run: echo "ANDROID_VERSION_CODE=$((100 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
+      - name: Install & build web assets
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+          npm run icons
+          npx cap sync android
+      - name: Signing key
+        env:
+          DWGV_KEYSTORE_BASE64: ${{ secrets.DWGV_KEYSTORE_BASE64 }}
+          DWGV_KEYSTORE_PASSWORD: ${{ secrets.DWGV_KEYSTORE_PASSWORD }}
+        run: |
+          if [ -n "$DWGV_KEYSTORE_BASE64" ] && [ -n "$DWGV_KEYSTORE_PASSWORD" ]; then
+            echo "$DWGV_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.keystore"
+            echo "KEYSTORE_FILE=$RUNNER_TEMP/release.keystore" >> "$GITHUB_ENV"
+            echo "KEYSTORE_PASSWORD=$DWGV_KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+            echo "SIGNING_MODE=private-key" >> "$GITHUB_ENV"
+          else
+            echo "::notice::Signing with the bundled fallback key (fine for personal sideloading)."
+            echo "SIGNING_MODE=fallback-key" >> "$GITHUB_ENV"
+          fi
+      - name: Build release APK
+        working-directory: dwg-viewer/android
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon assembleRelease
+      - name: Verify and collect
+        run: |
+          set -e
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          mkdir -p out
+          cp android/app/build/outputs/apk/release/app-release.apk out/DWG-Viewer.apk
+          "$BT/apksigner" verify --print-certs out/DWG-Viewer.apk | tee out/android-signing.txt
+          "$BT/aapt2" dump badging out/DWG-Viewer.apk | grep -E "^package|sdkVersion|targetSdkVersion|application-label:" | tee out/android-badging.txt
+          echo "$SIGNING_MODE" > out/signing-mode.txt
+          ls -la out
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dwg-viewer-android
+          path: dwg-viewer/out
+
+  android-device-test:
+    name: Android emulator test (API ${{ matrix.api }}${{ matrix.old && ', WebView 83' || '' }})
+    needs: android
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # images with a current WebView, like real phones that get Play Store updates
+          - api: 33
+          - api: 34
+          # API 30 image ships the frozen 2020 WebView 83: the app must not crash and
+          # must tell the user to update Android System WebView
+          - api: 30
+            old: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: dwg-viewer-android
+          path: dwg-viewer/out
+      - name: Enable KVM
+        working-directory: .
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Run on emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ matrix.api }}
+          target: google_apis
+          arch: x86_64
+          ram-size: 3072M
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot
+          script: EXPECT_OLD_WEBVIEW=${{ matrix.old && 1 || 0 }} bash dwg-viewer/test/android/run-on-emulator.sh dwg-viewer/out/DWG-Viewer.apk dwg-viewer/test/samples/example_2018.dwg emulator-results
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dwg-viewer-android-api${{ matrix.api }}
+          path: emulator-results
+          if-no-files-found: ignore
+
+  desktop:
+    name: Desktop (${{ matrix.name }})
+    needs: test
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            name: Windows
+            target: --win
+          - os: macos-latest
+            name: macOS
+            target: --mac
+          - os: ubuntu-latest
+            name: Linux
+            target: --linux
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: dwg-viewer/package-lock.json
+      - name: Install & build
+        shell: bash
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+          npm run icons
+      - name: Package
+        shell: bash
+        run: npx electron-builder ${{ matrix.target }} --publish never
+      - name: Smoke test the packaged Linux app
+        if: runner.os == 'Linux'
+        run: xvfb-run -a node test/electron-smoke.mjs test/samples/example_2000.dwg dist/packaged-linux.png dist/linux-unpacked/dwg-viewer
+      - name: Collect
+        shell: bash
+        run: |
+          mkdir -p out
+          cd dist
+          for f in *.exe *.dmg *.AppImage *.deb *-mac.zip packaged-*.png; do [ -f "$f" ] && cp "$f" ../out/; done
+          ls -la ../out
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dwg-viewer-desktop-${{ matrix.name }}
+          path: dwg-viewer/out
+
+  ios:
+    name: iOS (unsigned IPA)
+    needs: test
+    runs-on: macos-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: dwg-viewer/package-lock.json
+      - name: Install & build web assets
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+          npm run icons
+          npx cap sync ios
+      - name: Build app (no code signing)
+        working-directory: dwg-viewer/ios/App
+        run: |
+          set -o pipefail
+          xcodebuild -workspace App.xcworkspace -scheme App -configuration Release \
+            -sdk iphoneos -destination 'generic/platform=iOS' \
+            -derivedDataPath "$RUNNER_TEMP/dd" \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            MARKETING_VERSION=1.0.0 CURRENT_PROJECT_VERSION=${{ github.run_number }} \
+            build | tail -40
+      - name: Package IPA
+        run: |
+          set -e
+          APP=$(find "$RUNNER_TEMP/dd/Build/Products/Release-iphoneos" -maxdepth 1 -name "*.app" | head -1)
+          test -d "$APP"
+          mkdir -p out/Payload
+          cp -R "$APP" out/Payload/
+          cd out && zip -qry DWG-Viewer-iOS-unsigned.ipa Payload && rm -rf Payload
+          ls -la
+      - name: Simulator smoke test
+        continue-on-error: true
+        working-directory: dwg-viewer/ios/App
+        run: |
+          set -e
+          xcodebuild -workspace App.xcworkspace -scheme App -configuration Debug -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' -derivedDataPath "$RUNNER_TEMP/dds" \
+            CODE_SIGNING_ALLOWED=NO build | tail -5
+          SIM_APP=$(find "$RUNNER_TEMP/dds/Build/Products/Debug-iphonesimulator" -maxdepth 1 -name "*.app" | head -1)
+          DEV=$(xcrun simctl list devices available | grep -m1 -E "iPhone 1[4-9]" | sed -E 's/.*\(([0-9A-F-]{36})\).*/\1/')
+          xcrun simctl boot "$DEV"
+          xcrun simctl install "$DEV" "$SIM_APP"
+          xcrun simctl launch "$DEV" com.dwgviewer.app
+          sleep 12
+          mkdir -p ../../out
+          xcrun simctl io "$DEV" screenshot ../../out/ios-simulator.png
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dwg-viewer-ios
+          path: dwg-viewer/out
+
+  publish:
+    name: Publish downloads
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    needs: [test, android, android-device-test, desktop, ios]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: dwg-viewer-publish
+      cancel-in-progress: false
+    defaults:
+      run:
+        working-directory: .
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Gather files
+        run: |
+          set -e
+          mkdir -p release
+          cp artifacts/dwg-viewer-android/DWG-Viewer.apk release/
+          cp artifacts/dwg-viewer-web/out/DWG-Viewer-web.zip release/
+          cp artifacts/dwg-viewer-ios/DWG-Viewer-iOS-unsigned.ipa release/
+          for f in artifacts/dwg-viewer-desktop-*/*; do
+            case "$f" in *.exe|*.dmg|*.AppImage|*.deb|*-mac.zip) cp "$f" release/ ;; esac
+          done
+          cd release
+          # stable names so the download links never change
+          for f in DWG-Viewer-Setup-*.exe; do mv "$f" DWG-Viewer-Setup-Windows.exe; done
+          for f in DWG-Viewer-Portable-*.exe; do mv "$f" DWG-Viewer-Portable-Windows.exe; done
+          for f in DWG-Viewer-*-mac.dmg; do mv "$f" DWG-Viewer-macOS.dmg; done
+          for f in DWG-Viewer-*-mac.zip; do mv "$f" DWG-Viewer-macOS.zip; done
+          for f in DWG-Viewer-*.AppImage; do mv "$f" DWG-Viewer-Linux.AppImage; done
+          for f in DWG-Viewer-*.deb; do mv "$f" DWG-Viewer-Linux.deb; done
+          sha256sum * > SHA256SUMS.txt
+          ls -la
+      - name: Publish the dwg-viewer-latest release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          VERSION=$(node -p "require('./dwg-viewer/package.json').version")
+          SIGNING_MODE=$(cat artifacts/dwg-viewer-android/signing-mode.txt 2>/dev/null || echo unknown)
+          BASE="https://github.com/${GITHUB_REPOSITORY}/releases/download/dwg-viewer-latest"
+          {
+            echo "## DWG Viewer $VERSION (build ${GITHUB_RUN_NUMBER})"
+            echo
+            echo "Free viewer for AutoCAD DWG (R13 – 2018+) and DXF drawings. Layers, layouts, measure (distance / area / angle) with snapping, markups, text search and PDF/PNG export. Works offline; files never leave your device."
+            echo
+            echo "| Platform | Download | How to install |"
+            echo "|---|---|---|"
+            echo "| **Android** 5.1+ | [DWG-Viewer.apk]($BASE/DWG-Viewer.apk) | Open the file on your phone → allow *Install unknown apps* → **Install** |"
+            echo "| **Windows** 10/11 | [Installer]($BASE/DWG-Viewer-Setup-Windows.exe) · [Portable]($BASE/DWG-Viewer-Portable-Windows.exe) | Run it. If SmartScreen warns, click *More info → Run anyway* |"
+            echo "| **macOS** 11+ (Intel & Apple silicon) | [DWG-Viewer-macOS.dmg]($BASE/DWG-Viewer-macOS.dmg) | Drag to Applications. First launch: right-click the app → **Open** |"
+            echo "| **Linux** | [AppImage]($BASE/DWG-Viewer-Linux.AppImage) · [.deb]($BASE/DWG-Viewer-Linux.deb) | \`chmod +x\` the AppImage and run it |"
+            echo "| **iPhone / iPad** | [DWG-Viewer-iOS-unsigned.ipa]($BASE/DWG-Viewer-iOS-unsigned.ipa) | Sideload with AltStore or Sideloadly (free Apple ID), or use the web app below → Share → *Add to Home Screen* |"
+            echo "| **Web / any device** | [DWG-Viewer-web.zip]($BASE/DWG-Viewer-web.zip) | Host the folder on any HTTPS server, or use the GitHub Pages version |"
+            echo
+            echo "Signing: Android = ${SIGNING_MODE:-see build}; desktop and iOS builds are unsigned (personal use)."
+            echo
+            echo '```'
+            cat release/SHA256SUMS.txt
+            echo '```'
+          } > notes.md
+          git tag -f dwg-viewer-latest "$GITHUB_SHA"
+          git push -f origin refs/tags/dwg-viewer-latest
+          TITLE="DWG Viewer $VERSION (build ${GITHUB_RUN_NUMBER})"
+          if gh release view dwg-viewer-latest >/dev/null 2>&1; then
+            gh release upload dwg-viewer-latest release/* --clobber
+            gh release edit dwg-viewer-latest --title "$TITLE" --notes-file notes.md --prerelease=false --latest=false
+          else
+            gh release create dwg-viewer-latest release/* --title "$TITLE" --notes-file notes.md --latest=false
+          fi
+          echo "### Downloads" >> "$GITHUB_STEP_SUMMARY"
+          echo "https://github.com/${GITHUB_REPOSITORY}/releases/tag/dwg-viewer-latest" >> "$GITHUB_STEP_SUMMARY"
+
+  pages:
+    name: Web app on GitHub Pages
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    defaults:
+      run:
+        working-directory: .
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dwg-viewer-web
+          path: web
+      - uses: actions/configure-pages@v5
+        continue-on-error: true
+        with:
+          enablement: true
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web/www
+      - id: deploy
+        uses: actions/deploy-pages@v4
+        continue-on-error: true

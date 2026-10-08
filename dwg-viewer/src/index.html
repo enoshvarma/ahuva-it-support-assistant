@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0b1220">
+  <meta name="description" content="DWG Viewer — open, view and measure DWG and DXF drawings offline.">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="DWG Viewer">
+  <title>DWG Viewer</title>
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <!-- ============ Home ============ -->
+  <section id="home" class="screen">
+    <header class="home-head">
+      <img src="icons/logo.svg" alt="" class="home-logo" width="56" height="56">
+      <div>
+        <h1>DWG Viewer</h1>
+        <p class="muted">Open DWG &amp; DXF drawings — fast, offline, free.</p>
+      </div>
+    </header>
+
+    <div class="home-actions">
+      <button id="btn-open" class="btn primary big" type="button">
+        <svg viewBox="0 0 24 24" class="ic"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+        Open drawing
+      </button>
+      <button id="btn-sample" class="btn big" type="button">
+        <svg viewBox="0 0 24 24" class="ic"><path d="M4 4h16v16H4zM4 12h7v8M11 4v5h9"/></svg>
+        Open sample drawing
+      </button>
+    </div>
+    <p class="hint muted desktop-only">…or drop a .dwg / .dxf file anywhere on this window.</p>
+
+    <div class="recent-head">
+      <h2>Recent</h2>
+      <button id="btn-clear-recent" class="link" type="button" hidden>Clear</button>
+    </div>
+    <ul id="recent" class="recent"></ul>
+    <p id="recent-empty" class="muted empty">Drawings you open appear here, ready to reopen offline.</p>
+
+    <footer class="home-foot muted">
+      <span id="app-version">v1.0.0</span> · Supports AutoCAD R13 – 2018+ DWG and ASCII DXF ·
+      <a href="#" id="btn-about">About &amp; licences</a>
+    </footer>
+    <input id="file-input" type="file" hidden>
+  </section>
+
+  <!-- ============ Viewer ============ -->
+  <section id="viewer" class="screen" hidden>
+    <header class="topbar">
+      <button class="icon-btn" id="btn-back" title="Back" aria-label="Back">
+        <svg viewBox="0 0 24 24" class="ic"><path d="M15 5l-7 7 7 7"/></svg>
+      </button>
+      <div class="title">
+        <div id="doc-name" class="doc-name">drawing.dwg</div>
+        <div id="doc-sub" class="doc-sub muted"></div>
+      </div>
+      <button class="icon-btn" id="btn-fit" title="Zoom extents (F)" aria-label="Zoom extents">
+        <svg viewBox="0 0 24 24" class="ic"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+      </button>
+      <button class="icon-btn" id="btn-bg" title="Background colour (B)" aria-label="Background colour">
+        <svg viewBox="0 0 24 24" class="ic"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" class="solid"/></svg>
+      </button>
+      <button class="icon-btn" id="btn-more" title="More" aria-label="More options">
+        <svg viewBox="0 0 24 24" class="ic"><circle cx="12" cy="5" r="1.4" class="solid"/><circle cx="12" cy="12" r="1.4" class="solid"/><circle cx="12" cy="19" r="1.4" class="solid"/></svg>
+      </button>
+    </header>
+
+    <div class="stage">
+      <canvas id="cad"></canvas>
+      <div id="layout-tabs" class="layout-tabs"></div>
+      <div id="coords" class="coords muted"></div>
+      <div id="mode-bar" class="mode-bar" hidden></div>
+      <div id="loading" class="loading" hidden>
+        <div class="spinner"></div>
+        <div id="loading-text">Opening drawing…</div>
+      </div>
+    </div>
+
+    <nav class="toolbar">
+      <button class="tool" data-panel="layers"><svg viewBox="0 0 24 24" class="ic"><path d="M12 3l9 5-9 5-9-5zM3 13l9 5 9-5"/></svg><span>Layers</span></button>
+      <button class="tool" data-panel="layouts"><svg viewBox="0 0 24 24" class="ic"><path d="M4 5h16v14H4zM4 9h16M9 9v10"/></svg><span>Layouts</span></button>
+      <button class="tool" data-mode="measure"><svg viewBox="0 0 24 24" class="ic"><path d="M3 17L17 3l4 4L7 21zM7 13l2 2M10 10l2 2M13 7l2 2"/></svg><span>Measure</span></button>
+      <button class="tool" data-mode="markup"><svg viewBox="0 0 24 24" class="ic"><path d="M4 20l4-1 11-11-3-3L5 16zM14 6l3 3"/></svg><span>Markup</span></button>
+      <button class="tool" data-panel="find"><svg viewBox="0 0 24 24" class="ic"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg><span>Find</span></button>
+      <button class="tool" data-panel="export"><svg viewBox="0 0 24 24" class="ic"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg><span>Export</span></button>
+    </nav>
+
+    <!-- panels -->
+    <aside id="panel" class="panel" hidden>
+      <div class="panel-head">
+        <h3 id="panel-title">Layers</h3>
+        <button class="icon-btn" id="panel-close" aria-label="Close"><svg viewBox="0 0 24 24" class="ic"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      </div>
+      <div id="panel-body" class="panel-body"></div>
+    </aside>
+
+    <div id="menu" class="menu" hidden>
+      <button data-act="lineweight"><span>Show lineweights</span><span class="check" id="chk-lw"></span></button>
+      <button data-act="info">Drawing information</button>
+      <button data-act="open">Open another drawing…</button>
+      <button data-act="about">About DWG Viewer</button>
+    </div>
+  </section>
+
+  <div id="toast" class="toast" hidden></div>
+  <div id="dialog" class="dialog" hidden><div class="dialog-card"><div id="dialog-body"></div><div class="dialog-actions"><button class="btn primary" id="dialog-ok">OK</button></div></div></div>
+
+  <script type="module" src="app.js"></script>
+  <script nomodule>
+    document.body.innerHTML = '<div style="padding:24px;font:16px system-ui;color:#e8eefb">DWG Viewer needs a newer browser engine. On Android, update “Android System WebView” and “Chrome” from the Play Store; on desktop, use a current Chrome, Edge, Firefox or Safari.</div>';
+  </script>
+</body>
+</html>

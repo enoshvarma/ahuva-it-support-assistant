@@ -1,0 +1,11 @@
+node_modules/
+www/
+dist/
+build/
+out/
+test/screens/
+ui-screenshots/
+emulator-results/
+*.log
+# keystore for unattended CI signing (see README); real keys belong in repository secrets
+!android/app/ci-fallback.keystore
