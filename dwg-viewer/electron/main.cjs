@@ -91,7 +91,7 @@ if (!single) {
     if (process.platform === 'darwin') {
       Menu.setApplicationMenu(Menu.buildFromTemplate([
         { role: 'appMenu' },
-        { label: 'File', submenu: [{ label: 'Open…', accelerator: 'CmdOrCtrl+O', click: () => win && win.webContents.executeJavaScript("document.getElementById('file-input').click()") }, { role: 'close' }] },
+        { label: 'File', submenu: [{ label: 'Open…', accelerator: 'CmdOrCtrl+O', click: () => win && win.webContents.executeJavaScript("document.getElementById('file-input').click()", true) }, { role: 'close' }] },
         { role: 'editMenu' },
         { role: 'windowMenu' },
       ]));

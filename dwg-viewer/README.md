@@ -36,7 +36,11 @@ All builds are produced by GitHub Actions and published to the
 - Export the view or the whole sheet to PNG or PDF; recent files reopen offline
 - "Open with DWG Viewer" from file managers, mail and chat apps (Android, iOS, desktop file associations)
 
-Not shown: ACIS 3D solids/regions, OLE objects, raster images (only their frame) and external references.
+3D solids, regions and bodies are drawn as wireframes when the file stores readable ACIS data
+(DXF, and DWG up to 2004).
+
+Not shown: 3D solids in DWG 2007+ (binary ACIS), tables in DWG 2010+ (their position is not exposed by
+the decoder), OLE objects, raster images (only their frame) and external references.
 
 ## How it works
 
