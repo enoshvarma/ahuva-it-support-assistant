@@ -32,7 +32,15 @@ ID=$(adb shell content query --uri content://media/external/file --projection _i
 if [ -n "$ID" ]; then
   URI="content://media/external/file/$ID"
   adb shell am start -a android.intent.action.VIEW -d "$URI" -t image/vnd.dwg -n $PKG/.MainActivity --grant-read-uri-permission
-  if wait_text "$NAME" 60; then echo "drawing opened OK ($URI)"; else echo "drawing did NOT open"; fail=1; fi
+  if wait_text "$NAME" 60; then echo "drawing received ($URI)"; else echo "drawing did NOT open"; fail=1; fi
+  # wait for the DWG decoder (WebAssembly) to finish
+  done_ok=0
+  for i in $(seq 1 90); do
+    ui > "$OUT/ui.xml"
+    if ! grep -qE "Reading |Preparing drawing|Opening " "$OUT/ui.xml"; then done_ok=1; break; fi
+    sleep 1
+  done
+  if [ $done_ok = 1 ]; then echo "DWG decoded and displayed"; else echo "DWG still loading after 90 s"; fail=1; fi
   echo "screen texts:"; grep -o 'text="[^"]*"' "$OUT/ui.xml" | sort -u | head -40
   sleep 3
   shot 2-drawing
