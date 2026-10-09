@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Radar sweep over a network node: adaptive icon foreground (108dp canvas, 66dp safe zone). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <path android:fillColor="#00000000" android:strokeColor="#FFFFFF" android:strokeWidth="3"
+        android:pathData="M54,54m-26,0a26,26 0,1 1,52 0a26,26 0,1 1,-52 0" />
+    <path android:fillColor="#00000000" android:strokeColor="#9FD3FF" android:strokeWidth="2.5"
+        android:pathData="M54,54m-16,0a16,16 0,1 1,32 0a16,16 0,1 1,-32 0" />
+    <path android:fillColor="#5500BFA5"
+        android:pathData="M54,54 L54,28 A26,26 0 0,1 76.5,41 Z" />
+    <path android:fillColor="#00000000" android:strokeColor="#00BFA5" android:strokeWidth="3" android:strokeLineCap="round"
+        android:pathData="M54,54 L76.5,41" />
+    <path android:fillColor="#FFFFFF" android:pathData="M54,54m-5,0a5,5 0,1 1,10 0a5,5 0,1 1,-10 0" />
+    <path android:fillColor="#00BFA5" android:pathData="M68,44m-3.5,0a3.5,3.5 0,1 1,7 0a3.5,3.5 0,1 1,-7 0" />
+    <path android:fillColor="#FFFFFF" android:pathData="M40,66m-3,0a3,3 0,1 1,6 0a3,3 0,1 1,-6 0" />
+    <path android:fillColor="#FFFFFF" android:pathData="M66,68m-2.5,0a2.5,2.5 0,1 1,5 0a2.5,2.5 0,1 1,-5 0" />
+</vector>
