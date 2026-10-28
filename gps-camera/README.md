@@ -32,7 +32,7 @@ stamped photo was saved. Each run uploads the resulting photos as artifacts.
 ## Download / build
 
 - **Permanent link (always the newest tested build):**
-  https://github.com/enoshvarma/ahuva-it-support-assistant/releases/download/gps-camera-latest/sarathi-gps-camera.apk
+  https://github.com/enoshvarma/ahuva-it-support-assistant/releases/download/gps-camera-latest/project-sarthi.apk
   CI publishes there only after the device tests pass on every Android version.
 - **Local:** `cd gps-camera && ./gradlew assembleRelease` (needs the Android SDK). The APK is at
   `app/build/outputs/apk/release/app-release.apk`.

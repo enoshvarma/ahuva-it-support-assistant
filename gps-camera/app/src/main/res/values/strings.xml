@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Project Sarthi</string>
+    <string name="app_name">Sarthi</string>
     <string name="default_project">Project Sarthi</string>
     <string name="waiting_gps">Waiting for GPS fix…</string>
     <string name="permissions_needed">Camera and location permissions are needed to take geo-tagged photos.</string>
