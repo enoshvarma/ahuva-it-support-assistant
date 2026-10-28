@@ -1,6 +1,6 @@
-# Project Sarathi GPS Camera (Android)
+# Project Sarthi GPS Camera (Android)
 
-A native Android camera that stamps every photo with a **PROJECT SARATHI** GPS overlay. You see
+A native Android camera that stamps every photo with a **PROJECT SARTHI** GPS overlay. You see
 the overlay live in the viewfinder, and the same overlay is burned into the saved JPEG:
 
 - Map thumbnail with a location pin (OpenStreetMap)
@@ -10,7 +10,7 @@ the overlay live in the viewfinder, and the same overlay is burned into the save
 - Altitude and GPS accuracy
 - Optional note (for example "Site inspection – Block A")
 
-Photos go to **Pictures/ProjectSarathi**. They also carry standard GPS EXIF tags, so Google Photos
+Photos go to **Pictures/ProjectSarthi**. They also carry standard GPS EXIF tags, so Google Photos
 and other gallery apps show them on a map.
 
 ## Features

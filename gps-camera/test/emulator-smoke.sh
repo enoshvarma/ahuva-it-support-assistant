@@ -84,7 +84,7 @@ for attempt in 1 2 3; do
   shoot
   for i in $(seq 1 15); do
     sleep 2
-    FOUND=$(adb shell "ls /sdcard/Pictures/ProjectSarathi/ 2>/dev/null" | tr -d '\r' | grep -m1 '\.jpg$' || true)
+    FOUND=$(adb shell "ls /sdcard/Pictures/ProjectSarthi/ 2>/dev/null" | tr -d '\r' | grep -m1 '\.jpg$' || true)
     [ -n "$FOUND" ] && break
   done
   [ -n "$FOUND" ] && break
@@ -96,8 +96,8 @@ if grep -q "FATAL EXCEPTION" "$OUT/logcat.txt"; then
   grep -A 30 "FATAL EXCEPTION" "$OUT/logcat.txt" | head -60
   fail "app crashed"
 fi
-[ -n "$FOUND" ] || fail "no photo saved in Pictures/ProjectSarathi"
-adb pull "/sdcard/Pictures/ProjectSarathi/$FOUND" "$OUT/photo-api$API.jpg" >/dev/null 2>&1 || fail "pull photo"
+[ -n "$FOUND" ] || fail "no photo saved in Pictures/ProjectSarthi"
+adb pull "/sdcard/Pictures/ProjectSarthi/$FOUND" "$OUT/photo-api$API.jpg" >/dev/null 2>&1 || fail "pull photo"
 SIZE=$(stat -c %s "$OUT/photo-api$API.jpg")
 # The Android 5 emulator's camera HAL sometimes refuses full-resolution captures; the app then
 # stamps the preview frame, which is a small but valid JPEG. Require a real JPEG, not a size.

@@ -26,10 +26,10 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
 
-/** Stamps a captured JPEG and saves it to Pictures/ProjectSarathi with GPS EXIF tags. */
+/** Stamps a captured JPEG and saves it to Pictures/ProjectSarthi with GPS EXIF tags. */
 public final class PhotoSaver {
 
-    public static final String ALBUM = "ProjectSarathi";
+    public static final String ALBUM = "ProjectSarthi";
     private static final int MAX_DIMENSION = 4096; // keeps memory safe on low-end phones
 
     private PhotoSaver() {
@@ -65,7 +65,7 @@ public final class PhotoSaver {
         Bitmap thumb = Bitmap.createScaledBitmap(photo, tw, Math.max(1, tw * photo.getHeight() / photo.getWidth()), true);
 
         long now = stamp.timeMillis;
-        String name = "Sarathi_" + new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date(now));
+        String name = "Sarthi_" + new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date(now));
 
         File tmp = new File(context.getCacheDir(), name + ".jpg");
         FileOutputStream fos = new FileOutputStream(tmp);
@@ -125,7 +125,7 @@ public final class PhotoSaver {
             exif.setAttribute(ExifInterface.TAG_DATETIME_ORIGINAL, dt);
             exif.setAttribute(ExifInterface.TAG_MAKE, Build.MANUFACTURER);
             exif.setAttribute(ExifInterface.TAG_MODEL, Build.MODEL);
-            exif.setAttribute(ExifInterface.TAG_SOFTWARE, "Project Sarathi GPS Camera");
+            exif.setAttribute(ExifInterface.TAG_SOFTWARE, "Project Sarthi GPS Camera");
             StringBuilder desc = new StringBuilder(stamp.projectName == null ? "" : stamp.projectName);
             if (stamp.address != null && !stamp.address.isEmpty()) desc.append(" | ").append(stamp.address);
             if (stamp.note != null && !stamp.note.trim().isEmpty()) desc.append(" | ").append(stamp.note.trim());

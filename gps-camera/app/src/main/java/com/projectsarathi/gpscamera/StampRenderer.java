@@ -17,7 +17,7 @@ import java.util.Locale;
 import java.util.TimeZone;
 
 /**
- * Draws the "Project Sarathi" GPS stamp. The same code draws the live preview overlay and the
+ * Draws the "Project Sarthi" GPS stamp. The same code draws the live preview overlay and the
  * stamp burned into the saved photo, so what you see is exactly what you get. All sizes are a
  * fraction of the target width, so it looks identical on a 1080 px screen and a 4000 px photo.
  */
@@ -156,7 +156,7 @@ public final class StampRenderer {
 
         // Project badge: orange pill straddling the box's top edge, e.g. "PROJECT SARATHI".
         String brand = (d.projectName == null || d.projectName.trim().isEmpty()
-                ? "Project Sarathi" : d.projectName.trim()).toUpperCase(Locale.getDefault());
+                ? "Project Sarthi" : d.projectName.trim()).toUpperCase(Locale.getDefault());
         brand = ellipsize(brand, brandPaint, width - 2 * l.margin - 4 * u);
         float brandW = brandPaint.measureText(brand) + 3.2f * u;
         RectF pill = new RectF(l.textX - 0.4f * u, boxTop - l.brandH * 0.5f,

@@ -94,7 +94,7 @@ public final class AddressLookup {
         c.setConnectTimeout(8000);
         c.setReadTimeout(10000);
         // Required by the OpenStreetMap tile and Nominatim usage policies.
-        c.setRequestProperty("User-Agent", "ProjectSarathi-GPSCamera/1.0 (Android)");
+        c.setRequestProperty("User-Agent", "ProjectSarthi-GPSCamera/1.0 (Android)");
         try {
             if (c.getResponseCode() != 200) throw new Exception("HTTP " + c.getResponseCode());
             InputStream in = c.getInputStream();
