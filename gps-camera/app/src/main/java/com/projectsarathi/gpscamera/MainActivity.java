@@ -583,7 +583,12 @@ public class MainActivity extends AppCompatActivity implements LocationTracker.C
 
     private String projectName() {
         String p = prefs().getString("project", "");
-        return p == null || p.trim().isEmpty() ? getString(R.string.default_project) : p.trim();
+        // Older builds saved the default name "Project Sarathi" when Settings was saved; treat it
+        // (and an empty value) as "use the current default" so the rename reaches those phones.
+        if (p == null || p.trim().isEmpty() || p.trim().equalsIgnoreCase("Project Sarathi")) {
+            return getString(R.string.default_project);
+        }
+        return p.trim();
     }
 
     private StampData currentStamp() {
@@ -656,7 +661,9 @@ public class MainActivity extends AppCompatActivity implements LocationTracker.C
                 .setView(box)
                 .setPositiveButton(R.string.save, (d, w) -> {
                     sp.edit()
-                            .putString("project", project.getText().toString().trim())
+                            // Store "" for the default so a future rename of the default applies.
+                            .putString("project", project.getText().toString().trim()
+                                    .equals(getString(R.string.default_project)) ? "" : project.getText().toString().trim())
                             .putString("note", note.getText().toString().trim())
                             .putBoolean("showMap", map.isChecked())
                             .apply();
